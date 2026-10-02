@@ -12,7 +12,7 @@ foreach ($dir in $places) {
   $s.Arguments = "/c `"`"$target`"`""
   $s.WorkingDirectory = $root
   $s.WindowStyle = 7   # minimized
-  $s.IconLocation = "$env:SystemRoot\System32\imageres.dll,109"
+  $s.IconLocation = (Join-Path (Join-Path $root 'assets') 'taisa-mirror.ico') + ',0'
   $s.Description = 'TAISA Mirror - iPhone screen mirroring in your browser'
   $s.Save()
   Write-Host "Created: $dir\TAISA Mirror.lnk"

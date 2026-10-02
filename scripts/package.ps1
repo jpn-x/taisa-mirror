@@ -30,7 +30,7 @@ if ($sig.Status -ne 'Valid') { throw "node.exe signature is not valid: $($sig.St
 Write-Host "node.exe signed by: $($sig.SignerCertificate.Subject)"
 
 # 2. project files
-foreach ($d in 'server', 'web', 'docs') { Copy-Item $d "$stage\$d" -Recurse }
+foreach ($d in 'server', 'web', 'docs', 'assets') { Copy-Item $d "$stage\$d" -Recurse }
 New-Item -ItemType Directory "$stage\engine", "$stage\scripts" | Out-Null
 Copy-Item engine\playfair.wasm, engine\playfair.wasm.sha256, engine\pf_wrapper.c "$stage\engine"
 Copy-Item engine\playfair "$stage\engine\playfair" -Recurse

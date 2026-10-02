@@ -7,7 +7,7 @@ const http = require('http');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const { exec } = require('child_process');
+const { spawn } = require('child_process');
 const { AirPlayReceiver } = require('./airplay');
 
 const ROOT = path.join(__dirname, '..');
@@ -158,17 +158,20 @@ server.on('upgrade', (req, sock) => {
 server.on('error', e => {
   if (e.code === 'EADDRINUSE') {
     // Already running: just open the existing UI.
-    console.log(`TAISA Mirror is already running: http://localhost:${PORT}`);
+    console.log(`TAISA Mirror is already running: http://localhost:${PORT}  (opening your browser...)`);
     if (OPEN) openBrowser();
-    process.exit(0);
+    setTimeout(() => process.exit(0), 1500); // give the browser launcher time to start
+    return;
   }
   console.error(e); process.exit(1);
 });
 
 function openBrowser() {
   const url = `http://localhost:${PORT}/`;
-  // `start` opens the default browser (Chrome/Edge). No extra tools needed.
-  exec(`start "" "${url}"`, { windowsHide: true });
+  // `start` opens the default browser (Chrome/Edge). Detached so it survives this process exiting.
+  const c = spawn('cmd.exe', ['/c', 'start', '""', url], { detached: true, stdio: 'ignore', windowsHide: true });
+  c.on('error', () => console.log(`Open this address in Chrome/Edge: ${url}`));
+  c.unref();
 }
 
 server.listen(PORT, HOST, () => {
