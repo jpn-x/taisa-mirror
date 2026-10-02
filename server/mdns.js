@@ -107,12 +107,13 @@ class MdnsAdvertiser {
     const qd = msg.readUInt16BE(4); let pos = 12; const mine = new Set([
       '_services._dns-sd._udp.local', this.host,
       ...this.services.flatMap(s => [`${s.type}.local`, `${s.instance}.${s.type}.local`])].map(x => x.toLowerCase()));
-    let hit = false;
+    let hit = false; const asked = [];
     for (let i = 0; i < qd; i++) {
       const { name, end } = decName(msg, pos); pos = end + 4;
-      if (mine.has(name.toLowerCase())) hit = true;
+      if (mine.has(name.toLowerCase())) { hit = true; asked.push(name); }
     }
     if (!hit) return;
+    this.log(`mdns query from ${rinfo.address}: ${asked.join(', ')}`);
     const ifc = (this.ifs || []).find(i => sameSubnet(i, rinfo.address));
     if (!ifc) return; // not from our LAN
     const pkt = this._packet(ifc, 120);
