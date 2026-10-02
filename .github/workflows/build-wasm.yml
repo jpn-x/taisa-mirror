@@ -1,0 +1,22 @@
+name: build-wasm
+on:
+  workflow_dispatch:
+  push:
+    paths: ['engine/playfair/**', 'engine/pf_wrapper.c', 'scripts/build-wasm.sh']
+permissions:
+  contents: write
+jobs:
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build playfair.wasm (official emscripten image)
+        run: docker run --rm -v "$PWD":/src -w /src emscripten/emsdk:latest sh scripts/build-wasm.sh
+      - uses: actions/upload-artifact@v4
+        with: { name: playfair-wasm, path: "engine/playfair.wasm*" }
+      - name: Commit built wasm
+        run: |
+          git config user.name "github-actions"; git config user.email "actions@users.noreply.github.com"
+          git add engine/playfair.wasm engine/playfair.wasm.sha256
+          git diff --cached --quiet || git commit -m "ci: rebuild playfair.wasm"
+          git push
