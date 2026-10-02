@@ -19,6 +19,11 @@ if not exist "%NODE%" (
 )
 echo  TAISA Mirror を起動しています...
 "%NODE%" server\index.js --open
-echo.
-echo  TAISA Mirror が終了しました。
-pause
+rem Normal quit or "already running" (exit code 0): close this window by itself.
+rem Only stay open (pause) if something went wrong, so the message can be read.
+if errorlevel 1 (
+  echo.
+  echo  TAISA Mirror stopped with an error. Details: data\taisa-mirror.log
+  echo.
+  pause
+)

@@ -267,6 +267,8 @@ class AirPlayReceiver extends EventEmitter {
           this._startMirror(conn, BigInt(st.streamConnectionID).toString());
           res.streams.push({ dataPort: PORTS.mirror, type: 110 });
         } else if (st.type === 96) {
+          // Diagnostics only (v0.1 does not play audio): which codec does the phone offer?
+          this.log(`audio stream offered: ct=${st.ct} spf=${st.spf} audioFormat=0x${Number(st.audioFormat || 0).toString(16)} usingScreen=${st.usingScreen} isMedia=${st.isMedia} latencyMin=${st.latencyMin}`);
           this._startAudioSink();
           res.streams.push({ dataPort: PORTS.audioData, controlPort: PORTS.audioCtl, type: 96 });
         } else this.log('unknown stream type ' + st.type);
@@ -311,7 +313,9 @@ class AirPlayReceiver extends EventEmitter {
     const s = this.session; if (!s || s.audioStarted) return; s.audioStarted = true;
     for (const port of [PORTS.audioData, PORTS.audioCtl]) {
       const u = dgram.createSocket('udp4'); s.udp.push(u);
-      u.on('error', () => {}); u.on('message', () => {}); // v0.1: audio is not played; just swallow it
+      let seen = 0;
+      u.on('error', () => {});
+      u.on('message', (m) => { if (port === PORTS.audioData && seen++ < 3) this.log(`audio packet #${seen}: ${m.length}B, rtp payload type ${m.length > 1 ? m[1] & 0x7f : '?'}`); }); // v0.1: audio is not played
       u.bind(port, '0.0.0.0');
     }
   }

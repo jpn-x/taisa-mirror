@@ -168,8 +168,9 @@ server.on('error', e => {
 
 function openBrowser() {
   const url = `http://localhost:${PORT}/`;
-  // `start` opens the default browser (Chrome/Edge). Detached so it survives this process exiting.
-  const c = spawn('cmd.exe', ['/c', 'start', '""', url], { detached: true, stdio: 'ignore', windowsHide: true });
+  // explorer.exe hands the URL to the default browser through the normal Windows shell path
+  // (no hidden window state is inherited, which can make a cold-started Chrome open invisibly).
+  const c = spawn('explorer.exe', [url], { detached: true, stdio: 'ignore' });
   c.on('error', () => console.log(`Open this address in Chrome/Edge: ${url}`));
   c.unref();
 }
