@@ -2,7 +2,7 @@
 chcp 65001 >nul
 setlocal
 cd /d "%~dp0"
-title TAISA Mirror (このウィンドウを閉じると終了します)
+title TAISA Mirror - close this window to quit
 set "NODE=%~dp0runtime\node.exe"
 if not exist "%NODE%" (
   where node >nul 2>nul

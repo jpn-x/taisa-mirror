@@ -3,3 +3,4 @@ data/
 *.log
 release/*.zip
 .tmp/
+.tmp*
