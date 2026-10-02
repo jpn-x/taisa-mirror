@@ -31,7 +31,7 @@
 - **Smart App Control / Defender は OFF にしません（OFF にする必要はありません）。** 実行されるネイティブコードは、OpenJS Foundation 署名済みの公式 `node.exe` だけ。自作の exe / DLL / ドライバはありません。他は JavaScript と WebAssembly 1 個。
 - 管理画面は `127.0.0.1` のみ。AirPlay の待受けは「ミラーリング開始」中だけ開き、映像の接続は接続済み iPhone 以外を拒否。画面データは外部に送りません（外向き通信なし）。
 - 依存パッケージ 0（Node.js 組み込みのみ）。
-- 参考実測値（Windows 11 / RTX 5060 / iPhone 15 / Chrome、環境依存）: 待機中 約 45 MB・CPU ほぼ 0%、ZIP 約 34 MB。詳細は [docs/MEASUREMENTS.md](docs/MEASUREMENTS.md)。
+- 参考実測値（Windows 11 / RTX 5060 / iPhone 15 / Chrome、環境依存）: 待機中 約 45〜55 MB・CPU ほぼ 0%、接続中でも約 60 MB・CPU 0.2% 未満、ZIP 約 34 MB。詳細は [docs/MEASUREMENTS.md](docs/MEASUREMENTS.md)。
 
 ## 困ったとき
 
