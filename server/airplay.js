@@ -364,9 +364,12 @@ class AirPlayReceiver extends EventEmitter {
       }
       if (off !== data.length) return this.log('mirror: trailing bytes after NALs');
       const ts = Number(hdr.readBigUInt64LE(8) / 1000n); // microseconds
+      if (key) this.log(`mirror IDR frame ${data.length}B`);
       this.emit('frame', data, key, ts);
     } else if (type === 1) { // avcC (SPS+PPS), unencrypted
       const w = Math.round(hdr.readFloatLE(56)), h = Math.round(hdr.readFloatLE(60));
+      this.log(`mirror config packet opt=0x${hdr[6].toString(16)} size=${payload.length} ${w}x${h}${hdr[6] === 0x56 || hdr[6] === 0x5e ? ' (video stopping: screen off?)' : ''}`);
+      if (payload.length < 8) return; // empty/odd config (e.g. stream suspended): keep the current decoder
       if (payload.length >= 8 && payload.toString('latin1', 4, 8) === 'hvc1') return this.log('H.265 stream not supported in v0.1');
       this.emit('config', Buffer.from(payload), w, h);
       if (this.session === s && s.state !== 'mirroring') {

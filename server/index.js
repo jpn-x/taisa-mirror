@@ -25,6 +25,8 @@ const ap = new AirPlayReceiver({ name: NAME, dataDir: DATA, log });
 const state = { state: 'idle', client: null, error: null, notice: null };
 const clients = new Set(); // websockets
 let lastConfig = null;     // last avcC packet (so late browsers can start decoding)
+let gop = [];              // frames since the last IDR, so a browser can resync instantly (the iPhone rarely sends new IDRs)
+let gopBytes = 0;
 
 function status() { return JSON.stringify({ type: 'status', ...state, name: NAME }); }
 function setState(patch) { Object.assign(state, patch); broadcastText(status()); }
@@ -85,17 +87,32 @@ function disconnect() { ap.disconnect(); }
 ap.on('client', c => setState({ client: c }));
 ap.on('mirroring', c => setState({ state: 'connected', client: c }));
 ap.on('config', (avcc, w, h) => {
-  lastConfig = configMessage(avcc, w, h);
+  const msg = configMessage(avcc, w, h);
+  // After screen-off/on the iPhone re-sends the same SPS/PPS and keeps going without a new IDR:
+  // resetting the decoder then would freeze it, so an unchanged config is ignored.
+  if (lastConfig && lastConfig.equals(msg)) return;
+  lastConfig = msg; gop = []; gopBytes = 0;
   broadcastBin(lastConfig);
 });
+let nFrames = 0;
+setInterval(() => { if (nFrames) log(`frames in last 5s: ${nFrames}`); nFrames = 0; }, 5000).unref();
 ap.on('frame', (data, key, ts) => {
+  nFrames++;
   const head = Buffer.alloc(10); head[0] = key ? 2 : 3; head.writeBigUInt64BE(BigInt(ts), 2);
-  broadcastBin(Buffer.concat([head, data]));
+  const msg = Buffer.concat([head, data]);
+  if (key) { gop = [msg]; gopBytes = msg.length; }
+  else if (gop.length) { gop.push(msg); gopBytes += msg.length; if (gopBytes > 64 << 20) { gop = []; gopBytes = 0; } }
+  broadcastBin(msg);
 });
 ap.on('ended', reason => {
-  lastConfig = null;
+  lastConfig = null; gop = []; gopBytes = 0;
   if (state.state === 'connected' || state.client) setState({ state: ap.rtspServer ? 'waiting' : 'idle', client: null, notice: reason === 'user' ? '切断しました' : 'iPhone側で接続が終了しました' });
 });
+
+function resync(sock) { // config + every frame since the last IDR
+  if (!lastConfig || state.state !== 'connected' || !gop.length) return;
+  sock.write(wsFrame(2, lastConfig)); for (const f of gop) sock.write(wsFrame(2, f));
+}
 
 function configMessage(avcc, w, h) { // type 1 | w u16 | h u16 | avcC
   const head = Buffer.alloc(5); head[0] = 1; head.writeUInt16BE(w, 1); head.writeUInt16BE(h, 3);
@@ -125,13 +142,14 @@ server.on('upgrade', (req, sock) => {
   sock.setNoDelay(true);
   clients.add(sock);
   sock.write(wsFrame(1, Buffer.from(status())));
-  if (lastConfig && state.state === 'connected') sock.write(wsFrame(2, lastConfig));
+  resync(sock);
   sock.on('close', () => clients.delete(sock)); sock.on('error', () => {});
   wsParser(sock, msg => {
     let m; try { m = JSON.parse(msg); } catch { return; }
     if (m.cmd === 'start') start();
     else if (m.cmd === 'cancel') cancel();
     else if (m.cmd === 'disconnect') disconnect();
+    else if (m.cmd === 'resync') resync(sock);
   });
 });
 

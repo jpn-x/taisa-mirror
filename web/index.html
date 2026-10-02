@@ -94,7 +94,9 @@ function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add
 
 // ---------------------------------------------------------------- websocket
 let ws = null, wantView = 'off';
-function send(cmd) { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ cmd })); }
+let lastResync = 0;
+function send(cmd) { if (cmd === 'resync') { if (Date.now() - lastResync < 800) return; lastResync = Date.now(); }
+  if (ws && ws.readyState === 1) ws.send(JSON.stringify({ cmd })); }
 function connect() {
   ws = new WebSocket(`ws://${location.host}/ws`);
   ws.binaryType = 'arraybuffer';
@@ -126,19 +128,20 @@ function onBinary(b) {
   if (t === 1) { // config: w u16, h u16, avcC
     if (!('VideoDecoder' in window)) { $('decMsg').textContent = 'このブラウザは映像のデコードに対応していません。Chrome か Edge をお使いください。'; return; }
     const avcc = b.slice(5);
+    if (avcc.length < 8) return;
     resetDecoder();
     const codec = 'avc1.' + [avcc[1], avcc[2], avcc[3]].map(x => x.toString(16).padStart(2, '0')).join('');
     decoder = new VideoDecoder({
       output: (f) => { if (cv.width !== f.displayWidth || cv.height !== f.displayHeight) { cv.width = f.displayWidth; cv.height = f.displayHeight; } ctx.drawImage(f, 0, 0); f.close(); gotFrames++; },
-      error: (e) => { $('decMsg').textContent = '映像のデコードでエラー: ' + e.message; needKey = true; },
+      error: (e) => { needKey = true; $('decMsg').textContent = ''; send('resync'); },
     });
-    decoder.configure({ codec, description: avcc, optimizeForLatency: true });
+    try { decoder.configure({ codec, description: avcc, optimizeForLatency: true }); } catch (e) { $('decMsg').textContent = '映像の設定エラー: ' + e.message; resetDecoder(); return; }
     $('decMsg').textContent = '';
     return;
   }
   if ((t === 2 || t === 3) && decoder && decoder.state === 'configured') {
     if (needKey && t !== 2) return;
-    if (decoder.decodeQueueSize > 20 && t !== 2) { needKey = true; return; } // fell behind: wait for next IDR
+    if (decoder.decodeQueueSize > 60) { needKey = true; send('resync'); return; } // fell far behind: server replays from the last IDR
     needKey = false;
     const ts = Number(new DataView(b.buffer, b.byteOffset + 2, 8).getBigUint64(0));
     decoder.decode(new EncodedVideoChunk({ type: t === 2 ? 'key' : 'delta', timestamp: ts, data: b.subarray(10) }));
