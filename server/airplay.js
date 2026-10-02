@@ -350,6 +350,8 @@ class AirPlayReceiver extends EventEmitter {
 
   _mirrorPacket(s, hdr, payload) {
     const type = hdr[4];
+    if (s.dbg === undefined) s.dbg = 0;
+    if (s.dbg++ < 4) this.log(`mirror pkt type=${type} opt=${hdr[6]} size=${payload.length} head=${payload.subarray(0, 8).toString('hex')}`);
     if (type === 0) { // encrypted VCL NAL(s)
       if (!s.decipher) return;
       const data = s.decipher.update(payload); // CTR is one continuous stream across packets

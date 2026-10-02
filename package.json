@@ -1,0 +1,12 @@
+{
+  "name": "taisa-mirror",
+  "version": "0.1.0",
+  "description": "Free, local-only iPhone AirPlay screen mirroring into your browser (Windows). Zero dependencies.",
+  "license": "GPL-3.0-or-later",
+  "private": true,
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server/index.js --open",
+    "selftest": "node scripts/fake-iphone.js"
+  }
+}

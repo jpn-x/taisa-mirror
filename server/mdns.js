@@ -38,7 +38,7 @@ function ifaces() {
   for (const [name, list] of Object.entries(os.networkInterfaces())) {
     for (const a of list || []) {
       if (a.family !== 'IPv4' || a.internal) continue;
-      if (a.address.startsWith('169.254.')) continue;
+      if (!/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(a.address)) continue; // private LAN only (skips VPN/CGNAT/link-local)
       const ip = a.address.split('.').map(Number), m = a.netmask.split('.').map(Number);
       out.push({ name, address: a.address, net: ip.map((x, i) => x & m[i]).join('.'), mask: m });
     }
@@ -61,7 +61,7 @@ class MdnsAdvertiser {
       s.on('message', (msg, rinfo) => { try { this._onMessage(msg, rinfo); } catch (e) { /* ignore malformed */ } });
       s.bind(MDNS_PORT, '0.0.0.0', () => {
         try {
-          s.setMulticastTTL(255); s.setMulticastLoopback(false);
+          s.setMulticastTTL(255); s.setMulticastLoopback(true);
           this.ifs = ifaces();
           for (const i of this.ifs) { try { s.addMembership(MDNS_ADDR, i.address); } catch (e) { this.log(`mdns join ${i.address} failed: ${e.message}`); } }
           this._announce(120);

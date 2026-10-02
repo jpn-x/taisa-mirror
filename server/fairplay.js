@@ -7,19 +7,21 @@ const path = require('path');
 const replies = require('./fp_tables');
 
 const HEADER = Buffer.from('46504c590301040000000014', 'hex');
-let wasm = null;
+let compiled = null;
 
+/** The C code keeps static state between calls, so every decrypt gets a fresh instance (deterministic). */
 function loadWasm() {
-  if (wasm) return wasm;
+  if (!compiled) compiled = compileWasm();
+  const wasi = new Proxy({}, { get: (_t, name) => name === 'proc_exit' ? (c) => { throw new Error('wasm exit ' + c); } : () => 0 });
+  const inst = new WebAssembly.Instance(compiled, { wasi_snapshot_preview1: wasi, env: new Proxy({}, { get: () => () => 0 }) });
+  if (inst.exports._initialize) inst.exports._initialize();
+  return inst.exports;
+}
+
+function compileWasm() {
   const file = path.join(__dirname, '..', 'engine', 'playfair.wasm');
   if (!fs.existsSync(file)) throw new Error('engine/playfair.wasm not found (run the build-wasm workflow, see docs/BUILD.md)');
-  const mod = new WebAssembly.Module(fs.readFileSync(file));
-  // standalone wasm may import a few WASI functions; none are expected to be called.
-  const wasi = new Proxy({}, { get: (_t, name) => name === 'proc_exit' ? (c) => { throw new Error('wasm exit ' + c); } : () => 0 });
-  const inst = new WebAssembly.Instance(mod, { wasi_snapshot_preview1: wasi, env: new Proxy({}, { get: () => () => 0 }) });
-  wasm = inst.exports;
-  if (wasm._initialize) wasm._initialize();
-  return wasm;
+  return new WebAssembly.Module(fs.readFileSync(file));
 }
 
 class FairPlay {
