@@ -1,4 +1,6 @@
 'use strict';
+// SPDX-License-Identifier: GPL-3.0-or-later
+// TAISA Mirror (https://github.com/jpn-x/taisa-mirror). AirPlay protocol handling follows UxPlay (GPL-3.0); see THIRD_PARTY_NOTICES.md.
 // A fake "iPhone" used for end-to-end self tests without a real device.
 // It speaks the sender side of the same protocol: pair-setup / pair-verify / fp-setup / SETUP,
 // then pushes an encrypted H.264 mirror stream (generated with ffmpeg) at the receiver.
@@ -12,6 +14,8 @@ const { FairPlay } = require('../server/fairplay');
 
 const host = process.argv[2] || '127.0.0.1';
 const seconds = parseInt(process.argv[3] || '6', 10);
+const loops = parseInt(process.argv[4] || '1', 10); // number of connect/stream/teardown cycles (soak test)
+const abrupt = process.argv[5] === 'abrupt';      // drop the TCP connections without TEARDOWN (simulates Wi-Fi loss)
 const sha512 = (...p) => { const h = crypto.createHash('sha512'); p.forEach(x => h.update(x)); return h.digest(); };
 const rawOf = (k) => Buffer.from(k.export({ format: 'jwk' }).x, 'base64url');
 const imp = (t, raw) => crypto.createPublicKey({ key: { kty: 'OKP', crv: t === 'ed' ? 'Ed25519' : 'X25519', x: raw.toString('base64url') }, format: 'jwk' });
@@ -55,7 +59,7 @@ function makeStream() {
   return { avcc, frames };
 }
 
-(async () => {
+async function session(stream) {
   const sock = net.connect(7000, host); await new Promise(r => sock.once('connect', r));
   const call = rtsp(sock);
   let r = await call('GET', '/info'); console.log('info', r.status, bplist.parse(r.body).name);
@@ -89,7 +93,7 @@ function makeStream() {
   const mp = bplist.parse(r.body).streams[0].dataPort; console.log('setup 2', r.status, 'mirror port', mp);
   r = await call('RECORD', 'rtsp://127.0.0.1/1'); console.log('record', r.status);
   // stream
-  const { avcc, frames } = makeStream(); console.log(`generated ${frames.length} frames, avcC ${avcc.length}B`);
+  const { avcc, frames } = stream;
   const ms = net.connect(mp, host); await new Promise(res => ms.once('connect', res));
   const key = sha512(Buffer.from('AirPlayStreamKey' + streamId), aesKey).subarray(0, 16), iv = sha512(Buffer.from('AirPlayStreamIV' + streamId), aesKey).subarray(0, 16);
   const cipher = crypto.createCipheriv('aes-128-ctr', key, iv);
@@ -100,8 +104,13 @@ function makeStream() {
     ms.write(Buffer.concat([hdr(f.length, 0, 0), cipher.update(f)]));
     await new Promise(r => setTimeout(r, 33));
   }
-  console.log('streamed; sending TEARDOWN');
-  await new Promise(r => setTimeout(r, 500));
-  r = await call('TEARDOWN', 'rtsp://127.0.0.1/1', bplist.build({ streams: [{ type: 110 }] })); console.log('teardown', r.status);
+  await new Promise(r => setTimeout(r, 300));
+  if (!abrupt) { r = await call('TEARDOWN', 'rtsp://127.0.0.1/1', bplist.build({ streams: [{ type: 110 }] })); console.log('teardown', r.status); }
   sock.destroy(); ms.destroy();
+}
+
+(async () => {
+  const stream = makeStream(); console.log(`generated ${stream.frames.length} frames, avcC ${stream.avcc.length}B`);
+  for (let i = 1; i <= loops; i++) { if (loops > 1) console.log(`--- session ${i}/${loops}`); await session(stream); await new Promise(r => setTimeout(r, 400)); }
+  console.log('DONE');
 })().catch(e => { console.error('FAILED', e); process.exit(1); });

@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later  (TAISA Mirror, https://github.com/jpn-x/taisa-mirror) -->
 <html lang="ja">
 <head>
 <meta charset="utf-8">
@@ -74,15 +75,13 @@ footer{padding:10px 20px 16px;text-align:center;color:var(--sub);font-size:12px}
       <div id="stage"><canvas id="cv" width="640" height="360"></canvas></div>
       <div class="bar">
         <button class="ghost" id="btnFs">全画面</button>
-        <button class="ghost" id="btnShot">スクリーンショット</button>
-        <button class="ghost" id="btnCopy">クリップボードへコピー</button>
         <button class="danger" id="btnDis">切断</button>
       </div>
       <p id="decMsg" class="err" style="margin:0"></p>
     </div>
   </section>
 </main>
-<footer>TAISA Mirror v0.1 · ローカル完結（外部送信なし）· 無料・オープンソース (GPL-3.0)</footer>
+<footer>TAISA Mirror v0.1 · ローカル完結（外部送信なし）· 無料・GPL-3.0 · スクリーンショットは ShareX などで</footer>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -121,7 +120,7 @@ $('btnFs').onclick = () => { const st = $('stage'); document.fullscreenElement ?
 
 // ---------------------------------------------------------------- video (WebCodecs, hardware H.264 decode in Chrome/Edge)
 const cv = $('cv'), ctx = cv.getContext('2d');
-let decoder = null, needKey = true, gotFrames = 0;
+let decoder = null, needKey = true;
 function resetDecoder() { try { decoder && decoder.state !== 'closed' && decoder.close(); } catch {} decoder = null; needKey = true; }
 function onBinary(b) {
   const t = b[0];
@@ -132,7 +131,7 @@ function onBinary(b) {
     resetDecoder();
     const codec = 'avc1.' + [avcc[1], avcc[2], avcc[3]].map(x => x.toString(16).padStart(2, '0')).join('');
     decoder = new VideoDecoder({
-      output: (f) => { if (cv.width !== f.displayWidth || cv.height !== f.displayHeight) { cv.width = f.displayWidth; cv.height = f.displayHeight; } ctx.drawImage(f, 0, 0); f.close(); gotFrames++; },
+      output: (f) => { if (cv.width !== f.displayWidth || cv.height !== f.displayHeight) { cv.width = f.displayWidth; cv.height = f.displayHeight; } ctx.drawImage(f, 0, 0); f.close(); },
       error: (e) => { needKey = true; $('decMsg').textContent = ''; send('resync'); },
     });
     try { decoder.configure({ codec, description: avcc, optimizeForLatency: true }); } catch (e) { $('decMsg').textContent = '映像の設定エラー: ' + e.message; resetDecoder(); return; }
@@ -147,21 +146,6 @@ function onBinary(b) {
     decoder.decode(new EncodedVideoChunk({ type: t === 2 ? 'key' : 'delta', timestamp: ts, data: b.subarray(10) }));
   }
 }
-
-// ---------------------------------------------------------------- screenshot
-const stamp = () => { const d = new Date(), p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`; };
-const png = () => new Promise(res => cv.toBlob(res, 'image/png'));
-$('btnShot').onclick = async () => {
-  if (!gotFrames) return toast('まだ映像がありません');
-  const blob = await png(); const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = `taisa-mirror-${stamp()}.png`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-  toast('PNGを保存しました');
-};
-$('btnCopy').onclick = async () => {
-  if (!gotFrames) return toast('まだ映像がありません');
-  try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': await png() })]); toast('クリップボードにコピーしました'); }
-  catch (e) { toast('コピーできませんでした: ' + e.message); }
-};
 
 show('off'); connect();
 </script>

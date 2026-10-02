@@ -68,6 +68,9 @@ docs/     設計・トラブルシュート・ロールバック
 ## M. 配布方式
 `scripts/package.ps1` → `release/taisa-mirror-vX.Y.Z-win-x64.zip` ＋ `SHA256SUMS.txt` ＋ `BUILD-INFO.json`。GitHub Releases に置く。
 
+## v0.1 の割り切り
+スクリーンショット/クリップボード機能は入れていません（ShareX 等で足りるため。UI を軽く保つ）。ボタンは「ミラーリング開始」「キャンセル」「全画面」「切断」だけ。
+
 ## N. 大佐の出番（人間にしかできないもの）
 1. iPhone で コントロールセンター → 画面ミラーリング → TAISA Mirror を選ぶ（実機テスト）
 2. （初回のみ）Windows ファイアウォールの許可ダイアログが出たら「プライベート」だけにチェックして許可

@@ -1,4 +1,6 @@
 'use strict';
+// SPDX-License-Identifier: GPL-3.0-or-later
+// TAISA Mirror (https://github.com/jpn-x/taisa-mirror). AirPlay protocol handling follows UxPlay (GPL-3.0); see THIRD_PARTY_NOTICES.md.
 // AirPlay (legacy / "AirPlay 1" screen mirroring) receiver. Zero dependencies.
 // Protocol knowledge follows the open-source UxPlay project (GPL-3.0).
 // Video only in v0.1: the H.264 stream is decrypted here and handed to the browser (WebCodecs).
@@ -92,7 +94,7 @@ class AirPlayReceiver extends EventEmitter {
 
   // ---------------------------------------------------------------- RTSP/HTTP connection
   _onConn(sock) {
-    sock.setNoDelay(true);
+    sock.setNoDelay(true); sock.setKeepAlive(true, 5000); // notice a vanished phone (Wi-Fi off) within ~a minute
     this.conns.add(sock);
     const conn = {
       sock, fp: new FairPlay(), ecdhSecret: null, ecdhOurs: null, ecdhTheirs: null, edTheirs: null, hsStatus: 0,
@@ -324,7 +326,7 @@ class AirPlayReceiver extends EventEmitter {
       const peer = sock.remoteAddress ? sock.remoteAddress.replace(/^::ffff:/, '') : null;
       if (conn.remoteAddr && peer !== conn.remoteAddr) { sock.destroy(); return; } // only the phone that paired
       if (s.mirrorSock) s.mirrorSock.destroy();
-      s.mirrorSock = sock; sock.setNoDelay(true);
+      s.mirrorSock = sock; sock.setNoDelay(true); sock.setKeepAlive(true, 5000);
       this._readMirror(s, sock);
     });
     srv.on('error', e => this.log('mirror server: ' + e.message));

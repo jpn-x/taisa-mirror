@@ -1,55 +1,57 @@
 # TAISA Mirror
 
-**iPhone の画面を、パソコンのブラウザにそのまま映す。** 無料・アカウント不要・広告なし・クラウド不要。家のWi-Fiの中だけで完結します。
+**Windows で iPhone の画面を、無料・ローカルで、ブラウザに映す。** (AirPlay ミラーリング受信)
+アカウント不要 / 広告なし / クラウド不要 / テレメトリなし / 家の Wi-Fi の中だけで完結。
 
-> Free, local-only AirPlay screen mirroring from iPhone into your Chrome/Edge tab on Windows 11.
-> No account, no cloud, no ads, no telemetry, **zero npm dependencies**, no unsigned native code (works with Smart App Control ON).
+> 無保証・自己責任でお使いください。Apple とは無関係の個人開発のオープンソースです（"AirPlay" は Apple Inc. の商標）。iOS の更新で動かなくなる可能性があります。
 
-> **無保証・自己責任で。** Apple とは無関係の個人開発のオープンソースです（"AirPlay" は Apple Inc. の商標）。iOS の更新で動かなくなる可能性があります。
+## 使い方（4ステップ）
 
-## 使い方（初心者向け）
+1. ZIP を展開する（右クリック → すべて展開）
+2. **`Start TAISA Mirror.cmd`** をダブルクリック（ブラウザが開きます）
+3. ブラウザの **「ミラーリング開始」** を押す
+4. iPhone で **画面右上から下にスワイプ → 画面ミラーリング → TAISA Mirror**
 
-1. ZIP を解凍する（どこでもOK）
-2. `Start TAISA Mirror.cmd` をダブルクリック → Chrome（既定のブラウザ）が開く
-3. **「ミラーリング開始」** を押す
-4. iPhone で **コントロールセンター → 画面ミラーリング → TAISA Mirror**
-5. 同じブラウザ画面に iPhone が映る（全画面 / スクリーンショット / クリップボードにコピー / 切断）
+映ります。やめるときは「切断」（または iPhone 側で停止）。完全に終了するときは、黒いウィンドウを閉じるだけです。
+スクリーンショットは ShareX など、お好きなツールで撮れます。
 
-* **最初にWindowsが警告を出したら:** ZIPを右クリック → プロパティ → 「許可する」にチェックしてから解凍。それでも「PCが保護されました」と出たら「詳細情報 → 実行」。**Smart App Control / Defender を OFF にする必要はありません。**
-* PC と iPhone は同じ Wi-Fi に。初回に Windows のファイアウォール許可が出たら **「プライベート ネットワーク」だけ**許可してください。
-* デスクトップに置きたいときは `scripts\create-shortcut.ps1` を右クリック → PowerShellで実行。
-* 終了は、黒いウィンドウ（起動したもの）を閉じるだけ。
-* うまくいかないときは [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)。元に戻すときは [docs/ROLLBACK.md](docs/ROLLBACK.md)。
+- PC と iPhone は同じ Wi-Fi（同じルーター）に。ゲスト Wi-Fi や AP 分離は不可。
+- 初回に Windows のファイアウォール許可が出たら **「プライベート ネットワーク」だけ** 許可。
+- ブラウザは Chrome / Edge（映像のデコードに WebCodecs を使います）。
 
-## v0.1 の範囲
+## できること / まだ
 
-| できる | まだ |
+| できる | まだ（v0.1 では未対応） |
 |---|---|
-| iPhone/iPad の AirPlay 画面ミラーリング（映像・H.264） | 音声（無音）／ H.265(4K) |
-| 接続・切断・再接続・アプリ再起動後の再利用 | 複数端末同時／リモート操作／録画 |
-| PNG保存・クリップボードコピー | Android |
+| iPhone / iPad の画面ミラーリング（映像・H.264） | **音声（無音）** / H.265・4K |
+| 接続・切断・再接続、画面オフ→復帰、再起動後の再利用 | 複数台同時 / リモート操作 / 録画 / Android |
 
-## 安全設計
+## 安全・軽さ
 
-* **Smart App Control / Defender は OFF にしません。** 実行されるネイティブコードは、OpenJS Foundation 署名済みの公式 `node.exe`（ZIP同梱、SHA256検証済み）だけ。自作の exe / DLL / ドライバはありません。他は JavaScript と WebAssembly 1個。
-* 管理画面は `127.0.0.1` のみ（LANに公開しない）。AirPlay の待受けは「ミラーリング開始」中だけ開き、接続済みの iPhone 以外の映像接続は拒否。
-* 画面データは外部に送られません（外向き通信なし・テレメトリなし）。
-* 依存パッケージ 0（Node.js 組み込みのみ）。出所の追える範囲：UxPlay の playfair（GPL-3.0）を GitHub Actions で WASM 化。
-* 設計の詳細・比較・リスク: [docs/DESIGN.md](docs/DESIGN.md)
+- **Smart App Control / Defender は OFF にしません（OFF にする必要はありません）。** 実行されるネイティブコードは、OpenJS Foundation 署名済みの公式 `node.exe` だけ。自作の exe / DLL / ドライバはありません。他は JavaScript と WebAssembly 1 個。
+- 管理画面は `127.0.0.1` のみ。AirPlay の待受けは「ミラーリング開始」中だけ開き、映像の接続は接続済み iPhone 以外を拒否。画面データは外部に送りません（外向き通信なし）。
+- 依存パッケージ 0（Node.js 組み込みのみ）。
+- 参考実測値（Windows 11 / RTX 5060 / iPhone 15 / Chrome、環境依存）: 待機中 約 45 MB・CPU ほぼ 0%、ZIP 約 34 MB。詳細は [docs/MEASUREMENTS.md](docs/MEASUREMENTS.md)。
+
+## 困ったとき
+
+- Windows の警告 / ZIP の確認方法 → [docs/VERIFY.md](docs/VERIFY.md)
+- iPhone に出ない・映らない → [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
+- 元に戻す（アンインストール）→ [docs/ROLLBACK.md](docs/ROLLBACK.md)
+- 設計メモ → [docs/DESIGN.md](docs/DESIGN.md)
 
 ## 開発者向け
 
 ```
-node server/index.js --open          # 起動（Node 20+）
-node scripts/fake-iphone.js          # 偽iPhoneで通しテスト（要ffmpeg）
-pwsh scripts/package.ps1             # 配布ZIP + SHA256SUMS.txt を release/ に作成
+node server/index.js --open     # 起動 (Node 20+)
+node scripts/fake-iphone.js     # 偽 iPhone で通しテスト (要 ffmpeg。例: ... 127.0.0.1 3 25 = 25 回再接続)
+pwsh scripts/package.ps1        # 配布 ZIP + SHA256SUMS.txt を release/ に作成
 ```
 
-構成: `server/`（AirPlay受信・mDNS・plist・WebSocket）, `web/`（Chrome UI）, `engine/`（UxPlay由来 playfair → `playfair.wasm`）。
-映像は H.264 を **再エンコードせず** WebSocket でブラウザへ送り、Chrome の WebCodecs（GPU）で表示します。
+`server/`（AirPlay 受信・mDNS・plist・WebSocket）, `web/`（UI）, `engine/`（UxPlay 由来 playfair → `playfair.wasm`、GitHub Actions でビルド）。
+映像は H.264 を再エンコードせず WebSocket でブラウザへ送り、Chrome の WebCodecs（GPU）で表示します。
 
 ## ライセンス
 
-GPL-3.0-or-later。[LICENSE](LICENSE) / [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
-AirPlay プロトコル処理は [UxPlay](https://github.com/FDH2/UxPlay)（GPL-3.0）等のオープンソースの成果に基づきます。
-"AirPlay" は Apple Inc. の商標です。本プロジェクトは Apple とは無関係の独立したOSSです。
+**GPL-3.0-or-later**（[LICENSE](LICENSE)）。FairPlay 部分に [UxPlay](https://github.com/FDH2/UxPlay)（GPL-3.0）由来のコード（playfair）を含むため、配布物全体を GPL で、ソース付きで公開しています（このリポジトリ＝ソース。ZIP にもソースが入っています）。
+由来の詳細は [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。ライセンスに関する記述は一般的な OSS ライセンスの理解であり、法的助言ではありません。

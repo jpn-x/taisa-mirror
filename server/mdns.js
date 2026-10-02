@@ -1,4 +1,6 @@
 'use strict';
+// SPDX-License-Identifier: GPL-3.0-or-later
+// TAISA Mirror (https://github.com/jpn-x/taisa-mirror). AirPlay protocol handling follows UxPlay (GPL-3.0); see THIRD_PARTY_NOTICES.md.
 // Tiny mDNS / DNS-SD responder (RFC 6762/6763) for advertising _raop._tcp and _airplay._tcp.
 // Zero dependencies. Only answers questions about our own names. Nothing leaves the LAN.
 const dgram = require('dgram');

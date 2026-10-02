@@ -11,6 +11,7 @@
 | 映像が出ない（黒/止まる） | Chrome か Edge の最新版を使う。他のタブで重い処理をしない。いったん「切断」→iPhoneから再接続 |
 | 映像のデコードでエラー | ブラウザが H.264 の WebCodecs に非対応。Chrome/Edge をお使いください |
 | 音が出ない | v0.1 は映像のみです |
+| スクリーンショットを撮りたい | ShareX など既存のツールで撮れます（v0.1 には撮影ボタンはありません） |
 | Smart App Control / Defender の警告 | 実行されるネイティブは OpenJS Foundation 署名の `runtime\node.exe` だけです。**SAC/Defender を OFF にしないでください。** 警告が出る場合は `BUILD-INFO.json` と `SHA256SUMS.txt` で配布物を照合し、署名を `Get-AuthenticodeSignature runtime\node.exe` で確認 |
 | iPhone名が「TAISA Mirror」と別の名前で出る | 起動時に環境変数 `TAISA_NAME` で変更できます |
 

@@ -1,4 +1,6 @@
 'use strict';
+// SPDX-License-Identifier: GPL-3.0-or-later
+// TAISA Mirror (https://github.com/jpn-x/taisa-mirror). AirPlay protocol handling follows UxPlay (GPL-3.0); see THIRD_PARTY_NOTICES.md.
 // TAISA Mirror: local control server. Serves the browser UI on 127.0.0.1 only and bridges
 // the AirPlay receiver to the browser over a WebSocket (H.264 -> WebCodecs).
 const http = require('http');
