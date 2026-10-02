@@ -35,7 +35,7 @@ New-Item -ItemType Directory "$stage\engine", "$stage\scripts" | Out-Null
 Copy-Item engine\playfair.wasm, engine\playfair.wasm.sha256, engine\pf_wrapper.c "$stage\engine"
 Copy-Item engine\playfair "$stage\engine\playfair" -Recurse
 Copy-Item scripts\create-shortcut.ps1, scripts\build-wasm.sh, scripts\fake-iphone.js, scripts\mdns-probe.js, scripts\firewall.ps1 "$stage\scripts"
-Copy-Item 'Start TAISA Mirror.cmd', README.md, LICENSE, THIRD_PARTY_NOTICES.md, package.json $stage
+Copy-Item 'Start TAISA Mirror.cmd', 'はじめにお読みください.txt', README.md, LICENSE, THIRD_PARTY_NOTICES.md, package.json $stage
 
 # 3. provenance
 $commit = (git rev-parse HEAD).Trim()

@@ -5,6 +5,8 @@
 > Free, local-only AirPlay screen mirroring from iPhone into your Chrome/Edge tab on Windows 11.
 > No account, no cloud, no ads, no telemetry, **zero npm dependencies**, no unsigned native code (works with Smart App Control ON).
 
+> **無保証・自己責任で。** Apple とは無関係の個人開発のオープンソースです（"AirPlay" は Apple Inc. の商標）。iOS の更新で動かなくなる可能性があります。
+
 ## 使い方（初心者向け）
 
 1. ZIP を解凍する（どこでもOK）
@@ -13,6 +15,7 @@
 4. iPhone で **コントロールセンター → 画面ミラーリング → TAISA Mirror**
 5. 同じブラウザ画面に iPhone が映る（全画面 / スクリーンショット / クリップボードにコピー / 切断）
 
+* **最初にWindowsが警告を出したら:** ZIPを右クリック → プロパティ → 「許可する」にチェックしてから解凍。それでも「PCが保護されました」と出たら「詳細情報 → 実行」。**Smart App Control / Defender を OFF にする必要はありません。**
 * PC と iPhone は同じ Wi-Fi に。初回に Windows のファイアウォール許可が出たら **「プライベート ネットワーク」だけ**許可してください。
 * デスクトップに置きたいときは `scripts\create-shortcut.ps1` を右クリック → PowerShellで実行。
 * 終了は、黒いウィンドウ（起動したもの）を閉じるだけ。
