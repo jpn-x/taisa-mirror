@@ -10,7 +10,7 @@ Development codename: TAISA
 ## 使い方（4ステップ）
 
 1. ZIP を展開する（右クリック → すべて展開）
-2. **`Start MirrorX.cmd`** をダブルクリック（ブラウザが開きます）
+2. **`Start MirrorX.cmd`** をダブルクリック（MirrorX の専用ウィンドウが開き、タスクバーにも出ます。Chrome / Edge を使います）
 3. ブラウザの **「ミラーリング開始」** を押す
 4. iPhone で **画面右上から下にスワイプ → 画面ミラーリング → MirrorX**
 

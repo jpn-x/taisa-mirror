@@ -6,7 +6,7 @@ MirrorX は **Smart App Control / Windows Defender を OFF にしなくても動
 ## 1. ZIP が本物か確認する（SHA256）
 Releases ページの `SHA256SUMS.txt` と、ダウンロードした ZIP のハッシュを比べます。PowerShell で:
 ```
-Get-FileHash .\mirrorx-v0.2.0-win-x64.zip -Algorithm SHA256
+Get-FileHash .\mirrorx-v0.2.1-win-x64.zip -Algorithm SHA256
 ```
 表示された値が `SHA256SUMS.txt` と**完全に同じ**であることを確認してください。違う場合は使わないでください。
 
