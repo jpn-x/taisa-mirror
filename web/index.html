@@ -69,6 +69,10 @@ footer{padding:10px 20px 16px;text-align:center;color:var(--sub);font-size:12px}
 .dlg p{margin:6px 0 0}
 .dlg-btns{display:flex;gap:10px;justify-content:center;margin-top:22px}
 .dlg-btns button{flex:1;max-width:160px;padding:12px 10px}
+.solid-ok{background:linear-gradient(135deg,#FF77AA,#5BB8F5);color:#fff;box-shadow:0 6px 16px rgba(91,184,245,.35)}
+.solid-ok:hover{filter:brightness(1.05)}
+.dlg-ico.ok{background:rgba(91,184,245,.16);color:#2F95DD}
+.dlg small{display:block;margin-top:12px;color:var(--sub);font-size:12px;line-height:1.6}
 .solid-danger{background:#dc2626;color:#fff;box-shadow:0 6px 16px rgba(220,38,38,.28)}
 .solid-danger:hover{background:#b91c1c}
 @media (prefers-reduced-motion:reduce){.dlg[open],.dlg::backdrop{animation:none}}
@@ -154,6 +158,16 @@ footer{padding:10px 20px 16px;text-align:center;color:var(--sub);font-size:12px}
     <button class="ghost" id="dlgNo" type="button">キャンセル</button>
     <button class="solid-danger" id="dlgYes" type="button">終了する</button>
   </div>
+</dialog>
+<dialog id="dlgShortcut" class="dlg" aria-labelledby="scTitle">
+  <div class="dlg-ico ok" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11.2 18.2h1.6"/><path d="M19.5 8.5c1 1 1 3.500 0 4.500"/></svg></div>
+  <h2 id="scTitle">ショートカットを作りますか？</h2>
+  <p>デスクトップとスタートメニューに「MirrorX」のアイコンを作ります。次からは、そのアイコンをクリックするだけで使えます。</p>
+  <div class="dlg-btns">
+    <button class="ghost" id="scNo" type="button">今回は作らない</button>
+    <button class="solid-ok" id="scYes" type="button">作る</button>
+  </div>
+  <small>この確認は、最初の1回だけです。あとで作りたくなったら、フォルダの「ショートカットを作る.cmd」をダブルクリックしてください。</small>
 </dialog>
 <div class="toast" id="toast"></div>
 
@@ -260,6 +274,25 @@ $('btnTop').onclick = async () => {
     });
   } catch (e) { pipWin = null; $('decMsg').textContent = '最前面の窓を開けませんでした: ' + e.message; }
 };
+
+// ---------------------------------------------------------------- first run: offer to create the shortcut (asked only once)
+(function () {
+  const dlgSc = $('dlgShortcut');
+  const post = (action) => fetch('/api/shortcut', { method: 'POST', headers: { 'X-MirrorX': '1', 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) }).then((r) => r.json());
+  $('scNo').onclick = () => { dlgSc.close(); post('skip').catch(() => {}); };
+  $('scYes').onclick = async () => {
+    $('scYes').disabled = true;
+    try { const r = await post('create'); dlgSc.close(); toast(r.ok ? 'デスクトップとスタートメニューに「MirrorX」を作りました' : 'ショートカットを作れませんでした。フォルダの「ショートカットを作る.cmd」をお試しください'); }
+    catch { dlgSc.close(); toast('ショートカットを作れませんでした'); }
+    $('scYes').disabled = false;
+  };
+  setTimeout(async () => {
+    try {
+      const r = await (await fetch('/api/shortcut', { cache: 'no-store' })).json();
+      if (r.ask && !views.conn.classList.contains('on') && !$('dlgQuit').open) dlgSc.showModal();
+    } catch { /* offline server: nothing to ask */ }
+  }, 1500);
+})();
 
 // ---------------------------------------------------------------- video (WebCodecs, hardware H.264 decode in Chrome/Edge)
 const cv = $('cv'), ctx = cv.getContext('2d');

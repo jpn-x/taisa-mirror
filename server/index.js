@@ -7,6 +7,7 @@ const http = require('http');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const { spawn } = require('child_process');
 const { AirPlayReceiver } = require('./airplay');
 
 const ROOT = path.join(__dirname, '..');
@@ -127,6 +128,24 @@ function configMessage(avcc, w, h) { // type 1 | w u16 | h u16 | avcC
   return Buffer.concat([head, avcc]);
 }
 
+// ---------------------------------------------------------------- first-run: offer to create the shortcut (asked only once)
+const PREFS_FILE = path.join(DATA, 'prefs.json');
+const readPrefs = () => { try { return JSON.parse(fs.readFileSync(PREFS_FILE, 'utf8')); } catch { return {}; } };
+const writePrefs = (o) => { try { fs.writeFileSync(PREFS_FILE, JSON.stringify({ ...readPrefs(), ...o }, null, 2)); } catch (e) { log('prefs write failed: ' + e.message); } };
+function desktopHasShortcut() { // an existing MirrorX shortcut (e.g. made earlier by ショートカットを作る.cmd) means: don't ask
+  const up = process.env.USERPROFILE || '';
+  return [path.join(up, 'Desktop'), path.join(up, 'OneDrive', 'Desktop'), path.join(process.env.OneDrive || '', 'Desktop')]
+    .some((d) => { try { return fs.existsSync(path.join(d, 'MirrorX.lnk')); } catch { return false; } });
+}
+const shortcutAsk = () => process.platform === 'win32' && !process.env.TAISA_NO_BROWSER && !readPrefs().shortcutAsked && !desktopHasShortcut();
+function createShortcuts(cb) {
+  const ps = path.join(process.env.SystemRoot || String.raw`C:\Windows`, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+  const c = spawn(ps, ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(ROOT, 'scripts', 'create-shortcut.ps1')], { windowsHide: true });
+  let err = ''; c.stderr.on('data', (d) => { err += d; });
+  c.on('error', (e) => cb(false, e.message));
+  c.on('close', (code) => cb(code === 0, err.trim().slice(0, 300)));
+}
+
 // ---------------------------------------------------------------- HTTP (UI + tiny API), localhost only
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json', '.webmanifest': 'application/manifest+json' };
 const hostOk = (req) => { const h = (req.headers.host || '').toLowerCase(); return h === `127.0.0.1:${PORT}` || h === `localhost:${PORT}`; }; // DNS-rebinding guard
@@ -138,6 +157,21 @@ const server = http.createServer((req, res) => {
   if (url.pathname === '/api/status') {
     const ui = { clients: clients.size, visible: [...clients].filter(c => c.visible).length };
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); return res.end(JSON.stringify({ ...JSON.parse(status()), ui }));
+  }
+  if (url.pathname === '/api/shortcut') {
+    if (req.method === 'GET') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); return res.end(JSON.stringify({ ask: shortcutAsk() })); }
+    if (req.method === 'POST' && originOk(req) && req.headers['x-mirrorx'] === '1') {
+      let body = ''; req.on('data', (d) => { if (body.length < 1024) body += d; });
+      req.on('end', () => {
+        let a = ''; try { a = JSON.parse(body).action; } catch { /* ignore */ }
+        const done = (ok, msg) => { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ ok, msg })); };
+        if (a === 'create') createShortcuts((ok, msg) => { writePrefs({ shortcutAsked: true, shortcutCreated: ok, shortcutAt: new Date().toISOString() }); log('shortcut create: ' + (ok ? 'ok' : 'failed ' + msg)); done(ok, msg); });
+        else if (a === 'skip') { writePrefs({ shortcutAsked: true, shortcutCreated: false, shortcutAt: new Date().toISOString() }); done(true, ''); }
+        else done(false, 'bad request');
+      });
+      return;
+    }
+    res.writeHead(403); return res.end('forbidden');
   }
   let p = url.pathname === '/' ? '/index.html' : decodeURIComponent(url.pathname);
   const file = path.normalize(path.join(WEB, p));

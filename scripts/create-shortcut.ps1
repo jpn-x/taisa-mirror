@@ -1,6 +1,7 @@
 # Creates "MirrorX" shortcuts on the Desktop and in the Start menu (Start > All apps / search).
 # Windows does not allow programs to pin themselves; to pin: Start menu > All apps > MirrorX > right-click >
 # "Pin to Start" / "More" > "Pin to taskbar" (or right-click the Desktop shortcut > Show more options).
+$ErrorActionPreference = 'Stop'   # any failure -> non-zero exit code (the first-run prompt in the app relies on it)
 $root = Split-Path -Parent $PSScriptRoot
 $target = Join-Path $root 'Start MirrorX.cmd'
 $places = @([Environment]::GetFolderPath('Desktop'), (Join-Path ([Environment]::GetFolderPath('StartMenu')) 'Programs'))
