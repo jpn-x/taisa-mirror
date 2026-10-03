@@ -27,8 +27,30 @@ function probe(port) { // { state: 'ours'|'free'|'busy', ui? }
   });
 }
 
-function openUrl(url) {
+// An installed Chrome / Edge, used to open MirrorX as its own app-style window (no address bar, own taskbar button).
+function findBrowser() {
+  const e = process.env, c = [];
+  for (const base of [e.ProgramFiles, e['ProgramFiles(x86)'], e.LOCALAPPDATA]) {
+    if (!base) continue;
+    c.push(path.join(base, 'Google', 'Chrome', 'Application', 'chrome.exe'));
+    c.push(path.join(base, 'Microsoft', 'Edge', 'Application', 'msedge.exe'));
+  }
+  return c.find((f) => { try { return fs.existsSync(f); } catch { return false; } });
+}
+
+function openUrl(url, appWindow) {
   if (process.env.TAISA_NO_BROWSER) return;
+  // App-style window: its own taskbar button with the MirrorX icon (like a normal program).
+  // Set MIRRORX_TAB=1 to get the old behaviour (a normal browser tab).
+  if (appWindow && !process.env.MIRRORX_TAB) {
+    const b = findBrowser();
+    if (b) {
+      const c = spawn(b, ['--app=' + url], { detached: true, stdio: 'ignore' });
+      c.on('error', () => console.log(`Open this address in Chrome/Edge: ${url}`));
+      c.unref();
+      return;
+    }
+  }
   // explorer.exe hands the URL to the default browser through the normal Windows shell path
   // (no hidden window state is inherited, which can make a cold-started Chrome open invisibly).
   const c = spawn('explorer.exe', [url], { detached: true, stdio: 'ignore' });
@@ -48,7 +70,7 @@ function focusExisting() {
     const finish = (v) => { if (!done) { done = true; resolve(v); } };
     try {
       const c = spawn(ps, ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command',
-        "try { $w = New-Object -ComObject WScript.Shell; $w.SendKeys('{F15}'); Start-Sleep -Milliseconds 120; $r = $w.AppActivate('MirrorX - '); if ($r) { 'OK' } else { 'NO' } } catch { 'NO' }"],
+        "try { $w = New-Object -ComObject WScript.Shell; $w.SendKeys('{F15}'); Start-Sleep -Milliseconds 120; $r = $w.AppActivate('MirrorX ミラー'); if ($r) { 'OK' } else { 'NO' } } catch { 'NO' }"],
         { windowsHide: true });
       c.stdout.on('data', (d) => { out += d; });
       c.on('error', () => finish(false));
@@ -68,7 +90,7 @@ function windowExists() {
     const finish = (v) => { if (!done) { done = true; resolve(v); } };
     try {
       const c = spawn(ps, ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command',
-        "@(Get-Process | Where-Object { $_.MainWindowTitle -like 'MirrorX - *' }).Count"], { windowsHide: true });
+        "@(Get-Process | Where-Object { $_.MainWindowTitle -like 'MirrorX ミラー*' }).Count"], { windowsHide: true });
       c.stdout.on('data', (d) => { out += d; });
       c.on('error', () => finish(false));
       c.on('close', () => finish(parseInt(out.trim(), 10) > 0));
@@ -130,7 +152,7 @@ async function run({ port, entry }) {
     note(dataDir, 'click: brought the open MirrorX window forward');
   } else {
     note(dataDir, `click: opened the page (clients=${p.ui ? p.ui.clients : '?'}, visible=${p.ui ? p.ui.visible : '?'})`);
-    openUrl(url);
+    openUrl(url, true);
   }
   await sleep(1200); // let explorer.exe start before this process exits
   process.exit(0);
