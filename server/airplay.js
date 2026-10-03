@@ -18,6 +18,9 @@ const VERSION = '220.68';
 const MODEL = 'AppleTV3,2';
 const FEATURES = '0x5A7FFEE6,0x0';
 const FEATURES_NUM = 0x5A7FFEE6;
+// M1 audio experiment (MIRRORX_AUDIO_TEST=1): tell the phone we only take ALAC (44.1 kHz/16-bit/stereo = bit 18) and log what arrives.
+const AUDIO_TEST = !!process.env.MIRRORX_AUDIO_TEST;
+const AUDIO_MASK = AUDIO_TEST ? 0x40000 : 0x3fffffc;
 const PI = '2e388006-13ba-4041-9a67-25dd4a43d536';
 
 const PORTS = { rtsp: 7000, mirror: 7100, audioData: 7101, audioCtl: 7102, timing: 7103 };
@@ -43,7 +46,7 @@ function loadIdentity(dataDir) {
 class AirPlayReceiver extends EventEmitter {
   constructor({ name = 'MirrorX', dataDir, log = () => {} }) {
     super();
-    this.name = name; this.log = log;
+    this.name = name; this.log = log; this.dataDir = dataDir;
     this.id = loadIdentity(dataDir);
     this.edPub = rawOf(crypto.createPublicKey(this.id.priv));
     this.rtspServer = null; this.mdns = null; this.session = null; this.conns = new Set();
@@ -204,7 +207,7 @@ class AirPlayReceiver extends EventEmitter {
     Object.assign(res, {
       initialVolume: new bplist.Real(0),
       audioLatencies: [100, 101].map(t => ({ type: t, inputLatencyMicros: 0, audioType: 'default', outputLatencyMicros: false })),
-      audioFormats: [100, 101].map(t => ({ type: t, audioInputFormats: 0x3fffffc, audioOutputFormats: 0x3fffffc })),
+      audioFormats: [100, 101].map(t => ({ type: t, audioInputFormats: AUDIO_MASK, audioOutputFormats: AUDIO_MASK })),
       displays: [{
         uuid: 'e0ff8a27-6738-3d56-8a16-cc53aacee925', widthPhysical: 0, heightPhysical: 0, width: 1920, height: 1080,
         widthPixels: 1920, heightPixels: 1080, rotation: false, refreshRate: new bplist.Real(1 / 60), maxFPS: 30, overscanned: false, features: 14,
@@ -256,6 +259,7 @@ class AirPlayReceiver extends EventEmitter {
       const aes = conn.fp.decrypt(p.ekey);
       if (!aes) return this._reply(conn, req, 400, 'Bad Request');
       conn.aesKey = conn.ecdhSecret ? sha512(aes, conn.ecdhSecret).subarray(0, 16) : aes;
+      conn.eiv = Buffer.isBuffer(p.eiv) ? p.eiv : null;
       conn.client = { name: p.name || 'iPhone', model: p.model || '', deviceID: p.deviceID || '' };
       this._beginSession(conn, p.timingPort);
       res.timingPort = PORTS.timing; res.eventPort = 0;
@@ -267,9 +271,8 @@ class AirPlayReceiver extends EventEmitter {
           this._startMirror(conn, BigInt(st.streamConnectionID).toString());
           res.streams.push({ dataPort: PORTS.mirror, type: 110 });
         } else if (st.type === 96) {
-          // Diagnostics only (v0.1 does not play audio): which codec does the phone offer?
-          this.log(`audio stream offered: ct=${st.ct} spf=${st.spf} audioFormat=0x${Number(st.audioFormat || 0).toString(16)} usingScreen=${st.usingScreen} isMedia=${st.isMedia} latencyMin=${st.latencyMin}`);
-          this._startAudioSink();
+          this.log('audio stream offered: ' + JSON.stringify(st, (k, v) => typeof v === 'bigint' ? v.toString() : Buffer.isBuffer(v) ? `<${v.length}B>` : v));
+          this._startAudioSink(conn, st);
           res.streams.push({ dataPort: PORTS.audioData, controlPort: PORTS.audioCtl, type: 96 });
         } else this.log('unknown stream type ' + st.type);
       }
@@ -309,15 +312,44 @@ class AirPlayReceiver extends EventEmitter {
     this.log(`client "${conn.client.name}" (${conn.client.model}) connected`);
   }
 
-  _startAudioSink() {
+  // M1: receive the audio RTP stream, decrypt it (AES-128-CBC, key = the session key, iv = "eiv"), and only LOG what arrives.
+  // Nothing is played yet. With MIRRORX_AUDIO_TEST=1 the first frames are also dumped to data/audio-m1.bin for offline decoding (M2).
+  _startAudioSink(conn, st) {
     const s = this.session; if (!s || s.audioStarted) return; s.audioStarted = true;
+    const ct = Number(st && st.ct);
+    const st8 = { pkts: 0, bytes: 0, gaps: 0, lastSeq: -1, alac: 0, other: 0, ctl: 0, ctlTypes: {} };
+    let dump = null, dumped = 0;
+    if (AUDIO_TEST && this.dataDir) { try { dump = fs.openSync(path.join(this.dataDir, 'audio-m1.bin'), 'w'); } catch { /* ignore */ } }
+    s.audioTimer = setInterval(() => {
+      if (!st8.pkts && !st8.ctl) return;
+      this.log(`audio rx 5s: pkts=${st8.pkts} bytes=${st8.bytes} seqGaps=${st8.gaps} alacLike=${st8.alac} other=${st8.other} ctl=${st8.ctl} ${JSON.stringify(st8.ctlTypes)}`);
+      st8.pkts = st8.bytes = st8.gaps = st8.alac = st8.other = st8.ctl = 0; st8.ctlTypes = {};
+    }, 5000);
     for (const port of [PORTS.audioData, PORTS.audioCtl]) {
       const u = dgram.createSocket('udp4'); s.udp.push(u);
-      let seen = 0;
       u.on('error', () => {});
-      u.on('message', (m) => { if (port === PORTS.audioData && seen++ < 3) this.log(`audio packet #${seen}: ${m.length}B, rtp payload type ${m.length > 1 ? m[1] & 0x7f : '?'}`); }); // v0.1: audio is not played
+      u.on('message', (m) => {
+        try {
+          if (port === PORTS.audioCtl) { st8.ctl++; const t = m.length > 1 ? '0x' + (m[1] & 0x7f).toString(16) : '?'; st8.ctlTypes[t] = (st8.ctlTypes[t] || 0) + 1; return; }
+          if (m.length < 12) return;
+          const seq = m.readUInt16BE(2), pay = m.subarray(12);
+          if (st8.lastSeq >= 0 && ((st8.lastSeq + 1) & 0xffff) !== seq) st8.gaps++;
+          st8.lastSeq = seq; st8.pkts++; st8.bytes += pay.length;
+          let dec = pay;
+          const n = pay.length & ~15;
+          if (conn.eiv && conn.aesKey && n > 0) {
+            const d = crypto.createDecipheriv('aes-128-cbc', conn.aesKey, conn.eiv); d.setAutoPadding(false);
+            dec = Buffer.concat([d.update(pay.subarray(0, n)), pay.subarray(n)]);
+          }
+          // ALAC frames start with a 3-bit element tag; 1 (stereo pair) => first byte 0b001xxxxx
+          if (dec.length > 8 && (dec[0] & 0xe0) === 0x20) st8.alac++; else st8.other++;
+          if (st8.pkts + st8.other <= 3 && st8.pkts <= 3) this.log(`audio pkt seq=${seq} ts=${m.readUInt32BE(4)} payload=${pay.length}B first8=${dec.subarray(0, 8).toString('hex')}`);
+          if (dump !== null && dumped < 2000 && dec.length > 8) { const h = Buffer.alloc(4); h.writeUInt32BE(dec.length); fs.writeSync(dump, h); fs.writeSync(dump, dec); dumped++; }
+        } catch (e) { this.log('audio rx error: ' + e.message); }
+      });
       u.bind(port, '0.0.0.0');
     }
+    this.log(`audio sink started (ct=${ct}${AUDIO_TEST ? ', ALAC-only test mode' : ''})`);
   }
 
   _startMirror(conn, streamId) {
@@ -389,7 +421,7 @@ class AirPlayReceiver extends EventEmitter {
   _endSession(reason) {
     const s = this.session; if (!s) return;
     this.session = null;
-    clearInterval(s.timer);
+    clearInterval(s.timer); clearInterval(s.audioTimer);
     for (const u of s.udp) { try { u.close(); } catch { /* ignore */ } }
     if (s.mirrorSock) s.mirrorSock.destroy();
     if (s.mirrorServer) s.mirrorServer.close();
