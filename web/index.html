@@ -41,15 +41,15 @@ button{font:inherit;cursor:pointer;border:0;border-radius:999px;padding:12px 22p
 .done{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;margin-right:8px;border-radius:50%;background:var(--brand);color:#fff;font-size:16px;vertical-align:2px}
 .note{color:var(--warn);font-weight:600}.err{color:var(--err);font-weight:600}
 .view{display:none}.view.on{display:block}
-#stageView{width:100%;max-width:1200px;margin:0 auto}
+#stageView{width:100%;max-width:1200px;margin:0 auto;position:relative;padding-bottom:72px}
 #stageView.on{display:flex;flex-direction:column;align-items:center;gap:12px}
 #stage{position:relative;display:flex;justify-content:center;background:#000;border-radius:16px;overflow:hidden;max-width:100%}
-canvas{display:block;max-width:100%;max-height:calc(100vh - 270px);width:auto;height:auto}
+canvas{display:block;max-width:100%;max-height:calc(100vh - 340px);width:auto;height:auto}
 #stage:fullscreen{border-radius:0;align-items:center}#stage:fullscreen canvas{max-height:100vh;max-width:100vw}
 .hint{text-wrap:balance;max-width:560px;margin:0;padding:12px 16px;border-radius:14px;background:#fff8dc;border:1px solid #f1d98a;color:#6b5314;font-size:13px;line-height:1.7;text-align:center}
-.hint-float{position:fixed;left:50%;bottom:112px;padding:9px 18px;font-weight:700;z-index:30;width:max-content;max-width:calc(100vw - 32px);transform:translate(-50%,10px);opacity:0;pointer-events:none;transition:opacity .8s ease,transform .8s ease;box-shadow:0 10px 30px rgba(90,68,16,.18)}
-.hint-float.on{opacity:1;transform:translate(-50%,0)}
-@media (prefers-reduced-motion:reduce){.hint-float{transition:none}}
+.hint-slot{position:absolute;left:50%;bottom:0;width:max-content;max-width:calc(100% - 16px);padding:9px 18px;font-weight:700;transform:translate(-50%,8px);opacity:0;pointer-events:none;transition:opacity .8s ease,transform .8s ease}
+.hint-slot.on{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){.hint-slot{transition:none}}
 .nb{white-space:nowrap}
 .hint b{display:block;margin-bottom:2px;color:#5a4410}
 @media (prefers-color-scheme:dark){.hint{background:#3a3112;border-color:#6b5a1c;color:#f3e3a4}.hint b{color:#ffe9a0}}
@@ -139,6 +139,7 @@ footer{padding:10px 20px 16px;text-align:center;color:var(--sub);font-size:12px}
     <div id="stageView" class="on">
       <div class="bar"><span class="who" id="who">iPhone 接続中</span></div>
       <div id="stage"><canvas id="cv" width="640" height="360"></canvas></div>
+      <div id="stallHint" class="hint hint-slot" role="status" aria-live="polite">💡 接続が切れる場合は、<br>自動ロックを「なし」にしてください</div>
       <p id="decMsg" class="err" style="margin:0"></p>
     </div>
   </section>
@@ -170,7 +171,6 @@ footer{padding:10px 20px 16px;text-align:center;color:var(--sub);font-size:12px}
   </div>
   <small>この確認は、最初の1回だけです。あとで作りたくなったら、フォルダの「ショートカットを作る.cmd」をダブルクリックしてください。</small>
 </dialog>
-<div id="stallHint" class="hint hint-float" role="status" aria-live="polite">💡 接続が切れる場合は、<br>自動ロックを「なし」にしてください</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -247,14 +247,17 @@ $('btnFs').onclick = () => { const st = $('stage'); document.fullscreenElement ?
 // We move the picture (#stage) into it and bring it back when the little window is closed.
 let pipWin = null;
 let lastFrameAt = 0;                                                         // when the last picture arrived (for the "video stopped" hint)
-let stallShown = false, stallTimer = 0, screenOffAt = 0;
-setInterval(() => {                                                          // picture stopped for 10 s while connected (iPhone sleeps after 30 s at the earliest):
-  const live = views.conn.classList.contains('on');                          // fade the hint in for 5 s, once per stall; it never moves the layout (fixed overlay)
+let stallShown = 0, stallTimer = 0, stallSince = 0, screenOffAt = 0;
+setInterval(() => {                                                          // picture stopped / iPhone screen off for 10 s while connected (iPhone sleeps after 30 s at the earliest):
+  const live = views.conn.classList.contains('on');                          // fade a hint in for 5 s, twice, 12 s apart. It sits in a reserved slot under the picture (never overlaps, never shifts it).
   const now = performance.now();
   const stalled = live && ((lastFrameAt && now - lastFrameAt > 10000) || (screenOffAt && now - screenOffAt > 10000));
   const el = $('stallHint');
-  if (stalled && !stallShown) { stallShown = true; el.classList.add('on'); clearTimeout(stallTimer); stallTimer = setTimeout(() => el.classList.remove('on'), 5000); }
-  else if (!stalled) { stallShown = false; clearTimeout(stallTimer); el.classList.remove('on'); }
+  if (!stalled) { stallShown = 0; stallSince = 0; clearTimeout(stallTimer); el.classList.remove('on'); return; }
+  if (!stallSince) stallSince = now;
+  if (stallShown < 2 && now - stallSince >= stallShown * 12000) {
+    stallShown++; el.classList.add('on'); clearTimeout(stallTimer); stallTimer = setTimeout(() => el.classList.remove('on'), 5000);
+  }
 }, 500);
 const stageHome = $('stage').parentNode;
 if ('documentPictureInPicture' in window) $('btnTop').hidden = false;
