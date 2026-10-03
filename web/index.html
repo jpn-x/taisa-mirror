@@ -12,7 +12,10 @@
 @media (prefers-color-scheme:dark){:root{--bg:#0c1716;--card:#13201f;--ink:#e6f4f2;--sub:#8fb0ab;--line:#244240;--warn:#fbbf24;--err:#fca5a5}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Segoe UI","Hiragino Sans","Yu Gothic UI",sans-serif;min-height:100vh;display:flex;flex-direction:column}
-header{padding:14px 20px;display:flex;align-items:center;gap:10px}
+header{padding:12px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.hbar{display:flex;gap:8px;align-items:center}
+.hbar button[hidden]{display:none}
+button.sm{padding:7px 16px;font-size:14px}
 header a{display:flex;align-items:center;gap:10px;color:var(--ink);text-decoration:none;font-weight:700;font-size:18px;letter-spacing:.02em}
 header svg{width:30px;height:30px}
 main{flex:1;display:flex;align-items:center;justify-content:center;padding:16px}
@@ -34,18 +37,29 @@ button{font:inherit;cursor:pointer;border:0;border-radius:999px;padding:12px 22p
 #stageView{width:100%;max-width:1200px}
 #stageView.on{display:flex;flex-direction:column;align-items:center;gap:12px}
 #stage{position:relative;display:flex;justify-content:center;background:#000;border-radius:16px;overflow:hidden;max-width:100%}
-canvas{display:block;max-width:100%;max-height:calc(100vh - 230px);width:auto;height:auto}
+canvas{display:block;max-width:100%;max-height:calc(100vh - 170px);width:auto;height:auto}
 #stage:fullscreen{border-radius:0;align-items:center}#stage:fullscreen canvas{max-height:100vh;max-width:100vw}
 .bar{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:center}
 .who{font-weight:700}
 footer{padding:10px 20px 16px;text-align:center;color:var(--sub);font-size:12px}
-.quitlink{margin-top:8px;background:none;border:0;padding:6px 10px;color:var(--sub);font:inherit;font-size:12px;text-decoration:underline;cursor:pointer}.quitlink:hover{color:var(--err)}
+.share{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:12px}
+.xbtn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:999px;border:1px solid var(--line);color:var(--ink);text-decoration:none;font-weight:700;font-size:13px;background:var(--card);transition:.15s}
+.xbtn svg{width:14px;height:14px;fill:currentColor}
+.xbtn:hover{border-color:var(--brand);color:var(--brand-d)}
+.xbtn.fill{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.xbtn.fill:hover{background:var(--brand-d);border-color:var(--brand-d);color:#fff}
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;opacity:0;transition:.25s;pointer-events:none}
 .toast.on{opacity:1}
 </style>
 </head>
 <body>
-<header><a href="/" title="TAISA Mirror トップ"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#14b8a6"/><rect x="20" y="10" width="24" height="44" rx="5" fill="none" stroke="#fff" stroke-width="4"/><circle cx="32" cy="46" r="2.5" fill="#fff"/></svg>TAISA Mirror</a></header>
+<header><a href="/" title="TAISA Mirror トップ"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#14b8a6"/><rect x="20" y="10" width="24" height="44" rx="5" fill="none" stroke="#fff" stroke-width="4"/><circle cx="32" cy="46" r="2.5" fill="#fff"/></svg>TAISA Mirror</a>
+  <div class="hbar">
+    <button class="ghost sm" id="btnFs" hidden>全画面</button>
+    <button class="danger sm" id="btnDis" hidden>切断</button>
+    <button class="danger sm" id="btnQuit" hidden>終了</button>
+  </div>
+</header>
 <main>
   <section id="vLoad" class="view card">
     <h1>つなぎ中…</h1>
@@ -79,22 +93,32 @@ footer{padding:10px 20px 16px;text-align:center;color:var(--sub);font-size:12px}
     <div id="stageView" class="on">
       <div class="bar"><span class="who" id="who">iPhone 接続中</span></div>
       <div id="stage"><canvas id="cv" width="640" height="360"></canvas></div>
-      <div class="bar">
-        <button class="ghost" id="btnFs">全画面</button>
-        <button class="danger" id="btnDis">切断</button>
-      </div>
       <p id="decMsg" class="err" style="margin:0"></p>
     </div>
   </section>
 </main>
-<footer>TAISA Mirror v0.1 · ローカル完結（外部送信なし）· 無料・GPL-3.0 · スクリーンショットは ShareX などで<br><button class="quitlink" id="btnQuit" hidden>TAISA Mirror を終了する</button></footer>
+<footer>
+  <div class="share">
+    <a class="xbtn fill" id="xShare" href="https://x.com/intent/tweet" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>Xでシェア</a>
+    <a class="xbtn" href="https://x.com/cadillac600" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>@cadillac600</a>
+  </div>
+  <div>TAISA Mirror v0.1 · ローカル完結（外部送信なし）· 無料・GPL-3.0 · スクリーンショットは ShareX などで</div>
+</footer>
 <div class="toast" id="toast"></div>
 
 <script>
 'use strict';
 const $ = (id) => document.getElementById(id);
 const views = { load: $('vLoad'), off: $('vOff'), idle: $('vIdle'), wait: $('vWait'), conn: $('vConn') };
-function show(name) { for (const [k, v] of Object.entries(views)) v.classList.toggle('on', k === name); $('btnQuit').hidden = (name === 'off'); }
+function show(name) {
+  for (const [k, v] of Object.entries(views)) v.classList.toggle('on', k === name);
+  $('btnFs').hidden = $('btnDis').hidden = (name !== 'conn');          // only while mirroring
+  $('btnQuit').hidden = (name === 'off' || name === 'load');         // needs a live server
+}
+(function () { // X share link (text + official site)
+  const text = 'iPhoneの画面を、Windowsのブラウザにそのまま映せる「TAISA Mirror」。完全無料・広告なし・アカウント不要・クラウド不要。';
+  $('xShare').href = 'https://x.com/intent/tweet?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent('https://taisa-mirror.jp-x.workers.dev/');
+})();
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 1800); }
 
 // ---------------------------------------------------------------- websocket
