@@ -135,7 +135,10 @@ const originOk = (req) => { const o = req.headers.origin; if (!o) return true; r
 const server = http.createServer((req, res) => {
   if (!hostOk(req)) { res.writeHead(403); return res.end('forbidden'); }
   const url = new URL(req.url, 'http://localhost');
-  if (url.pathname === '/api/status') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); return res.end(status()); }
+  if (url.pathname === '/api/status') {
+    const ui = { clients: clients.size, visible: [...clients].filter(c => c.visible).length };
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); return res.end(JSON.stringify({ ...JSON.parse(status()), ui }));
+  }
   let p = url.pathname === '/' ? '/index.html' : decodeURIComponent(url.pathname);
   const file = path.normalize(path.join(WEB, p));
   if (!file.startsWith(WEB + path.sep) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); return res.end('not found'); }
@@ -158,6 +161,7 @@ server.on('upgrade', (req, sock) => {
     else if (m.cmd === 'cancel') cancel();
     else if (m.cmd === 'disconnect') disconnect();
     else if (m.cmd === 'resync') resync(sock);
+    else if (m.cmd === 'vis') sock.visible = !!m.visible;
     else if (m.cmd === 'quit') { log('quit requested from the browser'); setTimeout(shutdown, 150); }
   });
 });

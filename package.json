@@ -1,6 +1,6 @@
 {
   "name": "taisa-mirror",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Free, local-only iPhone AirPlay screen mirroring into your browser (Windows). Zero dependencies.",
   "license": "GPL-3.0-or-later",
   "private": true,

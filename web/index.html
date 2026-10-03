@@ -47,6 +47,11 @@ footer{padding:10px 20px 16px;text-align:center;color:var(--sub);font-size:12px}
 <body>
 <header><a href="/" title="TAISA Mirror トップ"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#14b8a6"/><rect x="20" y="10" width="24" height="44" rx="5" fill="none" stroke="#fff" stroke-width="4"/><circle cx="32" cy="46" r="2.5" fill="#fff"/></svg>TAISA Mirror</a></header>
 <main>
+  <section id="vLoad" class="view card">
+    <h1>つなぎ中…</h1>
+    <p>TAISA Mirror に接続しています。</p>
+  </section>
+
   <section id="vOff" class="view card">
     <h1>TAISA Mirror を起動してください</h1>
     <p>この画面は、パソコン側のTAISA Mirror（裏で動く小さなプログラム）につながっていません。</p>
@@ -88,20 +93,22 @@ footer{padding:10px 20px 16px;text-align:center;color:var(--sub);font-size:12px}
 <script>
 'use strict';
 const $ = (id) => document.getElementById(id);
-const views = { off: $('vOff'), idle: $('vIdle'), wait: $('vWait'), conn: $('vConn') };
+const views = { load: $('vLoad'), off: $('vOff'), idle: $('vIdle'), wait: $('vWait'), conn: $('vConn') };
 function show(name) { for (const [k, v] of Object.entries(views)) v.classList.toggle('on', k === name); $('btnQuit').hidden = (name === 'off'); }
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 1800); }
 
 // ---------------------------------------------------------------- websocket
-let ws = null, wantView = 'off';
+let ws = null, everOpened = false, fails = 0;
 let lastResync = 0;
 function send(cmd) { if (cmd === 'resync') { if (Date.now() - lastResync < 800) return; lastResync = Date.now(); }
   if (ws && ws.readyState === 1) ws.send(JSON.stringify({ cmd })); }
+function sendVis() { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ cmd: 'vis', visible: document.visibilityState === 'visible' })); }
+document.addEventListener('visibilitychange', sendVis);
 function connect() {
   ws = new WebSocket(`ws://${location.host}/ws`);
   ws.binaryType = 'arraybuffer';
-  ws.onopen = () => { $('retry').textContent = ''; };
-  ws.onclose = () => { resetDecoder(); show('off'); $('retry').textContent = '接続を待っています…'; setTimeout(connect, 1500); };
+  ws.onopen = () => { everOpened = true; $('retry').textContent = ''; sendVis(); };
+  ws.onclose = () => { resetDecoder(); fails++; if (everOpened || fails >= 3) { show('off'); $('retry').textContent = '接続を待っています…'; } setTimeout(connect, 1500); };
   ws.onerror = () => {};
   ws.onmessage = (ev) => ev.data instanceof ArrayBuffer ? onBinary(new Uint8Array(ev.data)) : onStatus(JSON.parse(ev.data));
 }
@@ -149,7 +156,7 @@ function onBinary(b) {
   }
 }
 
-show('off'); connect();
+show('load'); connect();
 </script>
 </body>
 </html>

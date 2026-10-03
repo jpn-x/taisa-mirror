@@ -7,11 +7,12 @@ $places = @([Environment]::GetFolderPath('Desktop'), (Join-Path ([Environment]::
 $sh = New-Object -ComObject WScript.Shell
 foreach ($dir in $places) {
   $s = $sh.CreateShortcut((Join-Path $dir 'TAISA Mirror.lnk'))
-  # Target cmd.exe (not the .cmd directly): Windows only offers "Pin to Start/taskbar" for shortcuts that point at an .exe.
-  $s.TargetPath = "$env:SystemRoot\System32\cmd.exe"
-  $s.Arguments = "/c `"`"$target`"`""
+  # Target an .exe (Windows only offers "Pin to Start/taskbar" for shortcuts that point at an .exe).
+  # conhost.exe --headless runs the launcher with NO console window at all: no flashing black window, and no
+  # window that the taskbar button could turn into. (If this ever fails, use cmd.exe /c "...\Start TAISA Mirror.cmd".)
+  $s.TargetPath = "$env:SystemRoot\System32\conhost.exe"
+  $s.Arguments = "--headless `"$env:SystemRoot\System32\cmd.exe`" /c `"`"$target`"`""
   $s.WorkingDirectory = $root
-  $s.WindowStyle = 7   # minimized
   $s.IconLocation = (Join-Path (Join-Path $root 'assets') 'taisa-mirror.ico') + ',0'
   $s.Description = 'TAISA Mirror - iPhone screen mirroring in your browser'
   $s.Save()
