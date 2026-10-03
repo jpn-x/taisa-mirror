@@ -160,6 +160,11 @@ const server = http.createServer((req, res) => {
     const ui = { clients: clients.size, visible: [...clients].filter(c => c.visible).length };
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); return res.end(JSON.stringify({ ...JSON.parse(status()), ui }));
   }
+  if (url.pathname === '/api/audio-support' && req.method === 'POST' && originOk(req) && req.headers['x-mirrorx'] === '1') {   // M1 diagnostics: which audio codecs can this browser decode?
+    let body = ''; req.on('data', (d) => { if (body.length < 2048) body += d; });
+    req.on('end', () => { log('browser audio decode support: ' + body.slice(0, 600)); res.writeHead(204); res.end(); });
+    return;
+  }
   if (url.pathname === '/api/shortcut') {
     if (req.method === 'GET') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); return res.end(JSON.stringify({ ask: shortcutAsk() })); }
     if (req.method === 'POST' && originOk(req) && req.headers['x-mirrorx'] === '1') {

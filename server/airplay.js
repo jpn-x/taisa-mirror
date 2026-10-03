@@ -19,8 +19,9 @@ const MODEL = 'AppleTV3,2';
 const FEATURES = '0x5A7FFEE6,0x0';
 const FEATURES_NUM = 0x5A7FFEE6;
 // M1 audio experiment (MIRRORX_AUDIO_TEST=1): tell the phone we only take ALAC (44.1 kHz/16-bit/stereo = bit 18) and log what arrives.
-const AUDIO_TEST = !!process.env.MIRRORX_AUDIO_TEST;
-const AUDIO_MASK = AUDIO_TEST ? 0x40000 : 0x3fffffc;
+// MIRRORX_AUDIO_TEST: 1|alac = ALAC only (bit 18), lc = AAC-LC only (bit 22), default = leave all formats on (baseline capture).
+const AUDIO_TEST = process.env.MIRRORX_AUDIO_TEST || '';
+const AUDIO_MASK = { '1': 0x40000, alac: 0x40000, lc: 0x400000 }[AUDIO_TEST] || 0x3fffffc;
 const PI = '2e388006-13ba-4041-9a67-25dd4a43d536';
 
 const PORTS = { rtsp: 7000, mirror: 7100, audioData: 7101, audioCtl: 7102, timing: 7103 };
@@ -317,13 +318,14 @@ class AirPlayReceiver extends EventEmitter {
   _startAudioSink(conn, st) {
     const s = this.session; if (!s || s.audioStarted) return; s.audioStarted = true;
     const ct = Number(st && st.ct);
-    const st8 = { pkts: 0, bytes: 0, gaps: 0, lastSeq: -1, alac: 0, other: 0, ctl: 0, ctlTypes: {} };
+    const seen = new Set();
+    const st8 = { dups: 0, pkts: 0, bytes: 0, gaps: 0, lastSeq: -1, alac: 0, other: 0, ctl: 0, ctlTypes: {} };
     let dump = null, dumped = 0;
     if (AUDIO_TEST && this.dataDir) { try { dump = fs.openSync(path.join(this.dataDir, 'audio-m1.bin'), 'w'); } catch { /* ignore */ } }
     s.audioTimer = setInterval(() => {
       if (!st8.pkts && !st8.ctl) return;
-      this.log(`audio rx 5s: pkts=${st8.pkts} bytes=${st8.bytes} seqGaps=${st8.gaps} alacLike=${st8.alac} other=${st8.other} ctl=${st8.ctl} ${JSON.stringify(st8.ctlTypes)}`);
-      st8.pkts = st8.bytes = st8.gaps = st8.alac = st8.other = st8.ctl = 0; st8.ctlTypes = {};
+      this.log(`audio rx 5s: pkts=${st8.pkts} bytes=${st8.bytes} redundantCopies=${st8.dups} seqGaps=${st8.gaps} alacLike=${st8.alac} other=${st8.other} ctl=${st8.ctl} ${JSON.stringify(st8.ctlTypes)}`);
+      st8.dups = st8.pkts = st8.bytes = st8.gaps = st8.alac = st8.other = st8.ctl = 0; st8.ctlTypes = {};
     }, 5000);
     for (const port of [PORTS.audioData, PORTS.audioCtl]) {
       const u = dgram.createSocket('udp4'); s.udp.push(u);
@@ -343,13 +345,15 @@ class AirPlayReceiver extends EventEmitter {
           }
           // ALAC frames start with a 3-bit element tag; 1 (stereo pair) => first byte 0b001xxxxx
           if (dec.length > 8 && (dec[0] & 0xe0) === 0x20) st8.alac++; else st8.other++;
+          const dup = seen.has(seq); seen.add(seq); if (seen.size > 512) seen.delete(seen.values().next().value);
+          if (dup) { st8.dups++; return; }
           if (st8.pkts + st8.other <= 3 && st8.pkts <= 3) this.log(`audio pkt seq=${seq} ts=${m.readUInt32BE(4)} payload=${pay.length}B first8=${dec.subarray(0, 8).toString('hex')}`);
-          if (dump !== null && dumped < 2000 && dec.length > 8) { const h = Buffer.alloc(4); h.writeUInt32BE(dec.length); fs.writeSync(dump, h); fs.writeSync(dump, dec); dumped++; }
+          if (dump !== null && dumped < 3000 && dec.length > 8) { const h = Buffer.alloc(6); h.writeUInt32BE(dec.length); h.writeUInt16BE(seq, 4); fs.writeSync(dump, h); fs.writeSync(dump, dec); dumped++; }   // [len u32][seq u16][frame]
         } catch (e) { this.log('audio rx error: ' + e.message); }
       });
       u.bind(port, '0.0.0.0');
     }
-    this.log(`audio sink started (ct=${ct}${AUDIO_TEST ? ', ALAC-only test mode' : ''})`);
+    this.log(`audio sink started (ct=${ct}${AUDIO_TEST ? ', test mode ' + AUDIO_TEST : ''})`);
   }
 
   _startMirror(conn, streamId) {

@@ -287,6 +287,16 @@ $('btnTop').onclick = async () => {
   } catch (e) { pipWin = null; $('decMsg').textContent = '最前面の窓を開けませんでした: ' + e.message; }
 };
 
+// ---------------------------------------------------------------- M1 audio diagnostics: can this Chrome decode the codecs an iPhone may send? (logged on the PC only)
+(async function () {
+  if (!('AudioDecoder' in window)) return;
+  const eld = Uint8Array.of(0xf8, 0xe8, 0x50, 0x00);   // AudioSpecificConfig: AAC-ELD, 44.1 kHz, stereo, 480 samples/frame
+  const cases = { 'AAC-ELD (mp4a.40.39)': { codec: 'mp4a.40.39', sampleRate: 44100, numberOfChannels: 2, description: eld }, 'AAC-LC (mp4a.40.2)': { codec: 'mp4a.40.2', sampleRate: 44100, numberOfChannels: 2 }, 'ALAC': { codec: 'alac', sampleRate: 44100, numberOfChannels: 2 } };
+  const out = {};
+  for (const [k, cfg] of Object.entries(cases)) { try { out[k] = (await AudioDecoder.isConfigSupported(cfg)).supported; } catch (e) { out[k] = 'error: ' + e.message; } }
+  try { await fetch('/api/audio-support', { method: 'POST', headers: { 'X-MirrorX': '1' }, body: JSON.stringify(out) }); } catch { /* ignore */ }
+})();
+
 // ---------------------------------------------------------------- first run: offer to create the shortcut (asked only once)
 (function () {
   const dlgSc = $('dlgShortcut');
