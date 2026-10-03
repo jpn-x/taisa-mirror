@@ -45,6 +45,9 @@ button{font:inherit;cursor:pointer;border:0;border-radius:999px;padding:12px 22p
 #stage{position:relative;display:flex;justify-content:center;background:#000;border-radius:16px;overflow:hidden;max-width:100%}
 canvas{display:block;max-width:100%;max-height:calc(100vh - 270px);width:auto;height:auto}
 #stage:fullscreen{border-radius:0;align-items:center}#stage:fullscreen canvas{max-height:100vh;max-width:100vw}
+.hint{max-width:520px;margin:0;padding:12px 16px;border-radius:14px;background:#fff8dc;border:1px solid #f1d98a;color:#6b5314;font-size:13px;line-height:1.7;text-align:center}
+.hint b{display:block;margin-bottom:2px;color:#5a4410}
+@media (prefers-color-scheme:dark){.hint{background:#3a3112;border-color:#6b5a1c;color:#f3e3a4}.hint b{color:#ffe9a0}}
 .pipnote{margin:60px 0;padding:24px;border:2px dashed var(--line);border-radius:16px;text-align:center;color:var(--sub);line-height:1.8}
 .bar{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:center}
 .who{font-weight:700}
@@ -127,6 +130,10 @@ footer{padding:10px 20px 16px;text-align:center;color:var(--sub);font-size:12px}
     <div id="stageView" class="on">
       <div class="bar"><span class="who" id="who">iPhone 接続中</span></div>
       <div id="stage"><canvas id="cv" width="640" height="360"></canvas></div>
+      <div id="stallHint" class="hint" role="status" hidden>
+        <b>💡 映像が止まりました。iPhoneの画面が暗くなったかもしれません。</b>
+        <span>iPhoneは、画面が消えると少し後に、自動でミラーリングを終わらせます。画面をつけると、そのまま続きます。<br>長く映すときは、設定 → 画面表示と明るさ → 自動ロック → 「なし」 にしてください。</span>
+      </div>
       <p id="decMsg" class="err" style="margin:0"></p>
     </div>
   </section>
@@ -160,6 +167,7 @@ function show(name) {
   const live = (name === 'conn');
   $('btnFs').disabled = $('btnDis').disabled = !live;                       // only while mirroring
   $('btnTop').disabled = !live;
+  if (!live) lastFrameAt = 0;
   if (!live && pipWin) closePip();                                           // connection ended: bring the picture back
 }
 (function () { // X share link (text + official site)
@@ -199,7 +207,7 @@ function onStatus(s) {
       const mine = s.notice === '切断しました';
       $('waitTitle').innerHTML = `<span class="done">✓</span>${mine ? 'ミラーリングを切断しました' : 'iPhoneとの接続が終了しました'}`;
       $('waitSub').textContent = 'このまま待機しています。もう一度つなぐときは、iPhoneで次の順に選んでください';
-      $('waitNote').innerHTML = '';
+      $('waitNote').innerHTML = mine ? '' : '<span class="note">iPhoneは、画面が消えると少し後に自動で終了します。長く映すときは、設定 → 画面表示と明るさ → 自動ロック → 「なし」 にしてください。</span>';
     } else { $('waitTitle').innerHTML = '<span class="pulse"></span>接続待機中…'; $('waitSub').textContent = 'iPhoneで次の順に選んでください'; $('waitNote').innerHTML = ''; }
     if (!s.client) resetDecoder();
   }
@@ -221,6 +229,11 @@ $('btnFs').onclick = () => { const st = $('stage'); document.fullscreenElement ?
 // A web page cannot pin itself on top, but this API opens a small window that Windows keeps on top of everything.
 // We move the picture (#stage) into it and bring it back when the little window is closed.
 let pipWin = null;
+let lastFrameAt = 0;                                                         // when the last picture arrived (for the "video stopped" hint)
+setInterval(() => {                                                          // no picture for 4 s while connected -> explain (usually the iPhone screen went dark)
+  const live = views.conn.classList.contains('on');
+  $('stallHint').hidden = !(live && lastFrameAt && performance.now() - lastFrameAt > 4000);
+}, 1000);
 const stageHome = $('stage').parentNode;
 if ('documentPictureInPicture' in window) $('btnTop').hidden = false;
 function closePip() { if (pipWin) { try { pipWin.close(); } catch {} } }
@@ -261,7 +274,7 @@ function onBinary(b) {
     resetDecoder();
     const codec = 'avc1.' + [avcc[1], avcc[2], avcc[3]].map(x => x.toString(16).padStart(2, '0')).join('');
     decoder = new VideoDecoder({
-      output: (f) => { if (cv.width !== f.displayWidth || cv.height !== f.displayHeight) { cv.width = f.displayWidth; cv.height = f.displayHeight; } ctx.drawImage(f, 0, 0); f.close(); },
+      output: (f) => { if (cv.width !== f.displayWidth || cv.height !== f.displayHeight) { cv.width = f.displayWidth; cv.height = f.displayHeight; } ctx.drawImage(f, 0, 0); f.close(); lastFrameAt = performance.now(); },
       error: (e) => { needKey = true; $('decMsg').textContent = ''; send('resync'); },
     });
     try { decoder.configure({ codec, description: avcc, optimizeForLatency: true }); } catch (e) { $('decMsg').textContent = '映像の設定エラー: ' + e.message; resetDecoder(); return; }
