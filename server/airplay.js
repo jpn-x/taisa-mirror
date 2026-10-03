@@ -303,7 +303,7 @@ class AirPlayReceiver extends EventEmitter {
     let types = [];
     try { const p = bplist.parse(req.body); if (Array.isArray(p.streams)) types = p.streams.map(s => s.type); } catch { /* none */ }
     this._reply(conn, req, 200, 'OK', { Connection: 'close' });
-    if (types.includes(96) && !types.includes(110)) return; // audio-only teardown: keep mirroring
+    if (types.includes(96) && !types.includes(110)) { if (this.session) this._audioReset(this.session); return; } // audio-only teardown (e.g. next video): keep mirroring, reset the audio decoder
     this._endSession('teardown');
   }
 
@@ -334,10 +334,12 @@ class AirPlayReceiver extends EventEmitter {
   // M1: receive the audio RTP stream, decrypt it (AES-128-CBC, key = the session key, iv = "eiv"), and only LOG what arrives.
   // Nothing is played yet. With MIRRORX_AUDIO_TEST=1 the first frames are also dumped to data/audio-m1.bin for offline decoding (M2).
   _startAudioSink(conn, st) {
-    const s = this.session; if (!s || s.audioStarted) return; s.audioStarted = true;
+    const s = this.session; if (!s) return;
+    if (s.audioStarted) { this.log('audio stream restarted (new video/app): resetting the decoder'); this._audioReset(s); return; }   // sockets stay; the phone starts a new numbering
+    s.audioStarted = true;
     const ct = Number(st && st.ct);
     const seen = new Set();
-    if (ct === 8) { s.audio = { dec: makeAacDecoder(), next: -1, pending: new Map(), lost: 0, frames: 0 }; if (!s.audio.dec) this.log('audio: AAC-ELD decoder (engine/aac_eld.wasm) is not available; audio stays silent'); }
+    if (ct === 8) { s.audio = { dec: makeAacDecoder(), next: -1, pending: new Map(), lost: 0, frames: 0, behind: 0 }; if (!s.audio.dec) this.log('audio: AAC-ELD decoder (engine/aac_eld.wasm) is not available; audio stays silent'); }
     s.audioDrain = setInterval(() => this._audioDrain(s), 20);
     const st8 = { dups: 0, pkts: 0, bytes: 0, gaps: 0, lastSeq: -1, alac: 0, other: 0, ctl: 0, ctlTypes: {} };
     let dump = null, dumped = 0;
@@ -381,9 +383,20 @@ class AirPlayReceiver extends EventEmitter {
   _audioIn(s, seq, frame) {
     const a = s.audio; if (!a || !a.dec) return;
     if (a.next < 0) a.next = seq;
-    if (((seq - a.next) & 0xffff) > 0x8000 || a.pending.has(seq)) return;   // already played / duplicate
+    if (((seq - a.next) & 0xffff) > 0x8000) {   // behind what we already played: normally a late duplicate...
+      if (++a.behind > 40) { this.log(`audio numbering jumped (seq ${seq}, expected ${a.next}): resync`); this._audioReset(s); a.next = seq; }   // ...but 40 in a row = the phone started a new stream
+      return;
+    }
+    a.behind = 0;
+    if (a.pending.has(seq)) return;
     a.pending.set(seq, { frame: Buffer.from(frame), at: Date.now() });
     this._audioDrain(s);
+  }
+
+  _audioReset(s) {
+    const a = s.audio; if (!a) return;
+    a.dec = makeAacDecoder(); a.next = -1; a.pending.clear(); a.behind = 0;
+    this.emit('audioreset');
   }
 
   _audioDrain(s) {

@@ -94,6 +94,7 @@ footer{padding:10px 20px 16px;text-align:center;color:var(--sub);font-size:12px}
   <div class="hbar" id="hbar" hidden>
     <button class="ghost sm" id="btnFs" title="ミラーリング中に使えます" disabled>全画面</button>
     <button class="ghost sm" id="btnSnd" title="iPhoneの音を、このパソコンから出します" disabled>🔊 音</button>
+    <button class="ghost sm" id="btnAdj" title="音と映像のタイミングを合わせます" disabled aria-label="音のタイミング調整">⏱</button>
     <button class="ghost sm" id="btnTop" title="小さな窓にして、いつも一番手前に表示します（ミラーリング中に使えます）" disabled hidden>最前面</button>
     <button class="danger sm" id="btnDis" title="ミラーリング中に使えます" disabled>切断</button>
     <button class="danger sm" id="btnQuit" title="MirrorX を終了します">終了</button>
@@ -172,6 +173,14 @@ footer{padding:10px 20px 16px;text-align:center;color:var(--sub);font-size:12px}
   </div>
   <small>この確認は、最初の1回だけです。あとで作りたくなったら、フォルダの「ショートカットを作る.cmd」をダブルクリックしてください。</small>
 </dialog>
+<dialog id="dlgAdj" class="dlg" aria-labelledby="adjTitle">
+  <h2 id="adjTitle">音のタイミング</h2>
+  <p>音が映像より<b>早い</b>と感じたら、右へ動かしてください（音を遅らせます）。</p>
+  <p style="margin:18px 0 4px;font-size:22px;font-weight:700;color:var(--ink)"><span id="adjVal">0.20</span> 秒</p>
+  <input id="adjRange" type="range" min="0" max="600" step="20" value="200" style="width:100%" aria-label="音の遅れ（ミリ秒）">
+  <div class="dlg-btns"><button class="ghost" id="adjReset" type="button">元に戻す</button><button class="solid-ok" id="adjClose" type="button">閉じる</button></div>
+  <small>はじめは 0.20 秒です。映像と音が合うところで、閉じてください。</small>
+</dialog>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -184,7 +193,7 @@ function show(name) {
   const live = (name === 'conn');
   $('btnFs').disabled = $('btnDis').disabled = !live;                       // only while mirroring
   $('btnTop').disabled = !live;
-  $('btnSnd').disabled = !live;
+  $('btnSnd').disabled = $('btnAdj').disabled = !live;
   if (!live && typeof audioStop === 'function') audioStop();
   if (!live) { lastFrameAt = 0; screenOffAt = 0; }
   if (!live && pipWin) closePip();                                           // connection ended: bring the picture back
@@ -212,6 +221,7 @@ function connect() {
     if (ev.data instanceof ArrayBuffer) return onBinary(new Uint8Array(ev.data));
     const m = JSON.parse(ev.data);
     if (m.type === 'bye') { bye = true; return; }          // the server is quitting on purpose
+    if (m.type === 'audioreset') { audioStop(); return; }   // a new audio stream starts (next video): drop what is buffered
     if (m.type === 'volume') { setVolumeDb(m.db); return; }   // the iPhone's volume buttons
     if (m.type === 'screen') { screenOffAt = m.off ? performance.now() : 0; return; }   // iPhone screen off/on
     if (m.boot) { if (bootSeen && bootSeen !== m.boot) { location.reload(); return; } bootSeen = m.boot; }   // server restarted (maybe updated): load the new page
@@ -331,6 +341,7 @@ class MxPlayer extends AudioWorkletProcessor {
   constructor() { super(); this.n = 0x20000; this.l = new Float32Array(this.n); this.r = new Float32Array(this.n); this.w = 0; this.rd = 0; this.fill = 0; this.play = false;
     this.pre = 5300; this.max = 17600;
     this.port.onmessage = (e) => { const d = e.data; if (d === 'flush') { this.fill = 0; this.play = false; return; }
+      if (!(d instanceof ArrayBuffer)) { if (d.pre) { this.pre = d.pre; this.max = d.pre + 12000; } return; }
       const s = new Int16Array(d); for (let i = 0; i + 1 < s.length; i += 2) { this.l[this.w] = s[i] / 32768; this.r[this.w] = s[i + 1] / 32768; this.w = (this.w + 1) & (this.n - 1); this.fill++; }
       if (this.fill > this.max) { const drop = this.fill - this.pre; this.rd = (this.rd + drop) & (this.n - 1); this.fill -= drop; } }; }
   process(_i, outs) { const o = outs[0], L = o[0], R = o[1] || o[0], len = L.length;
@@ -340,6 +351,9 @@ class MxPlayer extends AudioWorkletProcessor {
     for (let i = 0; i < len; i++) { L[i] = this.l[this.rd]; if (R !== L) R[i] = this.r[this.rd]; this.rd = (this.rd + 1) & (this.n - 1); } this.fill -= len; return true; } }
 registerProcessor('mx-player', MxPlayer);`;
 let ac = null, node = null, gain = null, audioReady = false, volDb = 0;
+let adelay = 200;   // ms the sound is held back so it lines up with the picture (the picture arrives ~0.2 s after the sound)
+try { const v = parseInt(localStorage.getItem('mx-adelay'), 10); if (v >= 0 && v <= 800) adelay = v; } catch { /* ignore */ }
+function applyDelay() { if (node) node.port.postMessage({ pre: Math.round(44.1 * (120 + adelay)) }); }
 let muted = false; try { muted = localStorage.getItem('mx-muted') === '1'; } catch { /* ignore */ }
 function paintSnd() { const b = $('btnSnd'); b.textContent = (muted ? '🔇 音オフ' : (ac && ac.state === 'suspended' ? '🔊 音を出す（クリック）' : '🔊 音')); }
 function applyGain() { if (gain) gain.gain.value = muted ? 0 : Math.min(1, Math.pow(10, volDb / 20) * 2); }   // iPhone volume (dB); +6 dB so a middle setting is not too quiet
@@ -352,7 +366,7 @@ async function audioInit() {
     await ac.audioWorklet.addModule(url); URL.revokeObjectURL(url);
     node = new AudioWorkletNode(ac, 'mx-player', { numberOfInputs: 0, outputChannelCount: [2] });
     gain = ac.createGain(); node.connect(gain); gain.connect(ac.destination); applyGain();
-    audioReady = true; ac.onstatechange = paintSnd; paintSnd();
+    applyDelay(); audioReady = true; ac.onstatechange = paintSnd; paintSnd();
   } catch (e) { ac = null; audioReady = false; $('btnSnd').textContent = '🔇 音は使えません'; }
 }
 function audioPlay(pcm) {
@@ -369,6 +383,13 @@ $('btnSnd').onclick = () => {
   applyGain(); if (muted) audioStop(); paintSnd();
 };
 paintSnd();
+{ const dlgAdj = $('dlgAdj'), rng = $('adjRange'), val = $('adjVal');
+  const setAdj = (v) => { adelay = v; val.textContent = (v / 1000).toFixed(2); rng.value = v; applyDelay(); try { localStorage.setItem('mx-adelay', String(v)); } catch { /* ignore */ } };
+  $('btnAdj').onclick = () => { setAdj(adelay); dlgAdj.showModal(); };
+  rng.oninput = () => setAdj(parseInt(rng.value, 10));
+  $('adjReset').onclick = () => setAdj(200);
+  $('adjClose').onclick = () => dlgAdj.close();
+  dlgAdj.addEventListener('click', (e) => { if (e.target === dlgAdj) dlgAdj.close(); }); }
 
 function onBinary(b) {
   const t = b[0];

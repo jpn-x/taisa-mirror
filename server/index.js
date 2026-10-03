@@ -109,6 +109,7 @@ ap.on('audio', (pcm) => {   // decoded iPhone audio: 16-bit interleaved stereo, 
   const f = wsFrame(2, Buffer.concat([Buffer.from([4]), pcm]));
   for (const c of clients) { if (c.writableLength > 1 << 20) continue; c.write(f); }   // slow browser: drop audio rather than queue it
 });
+ap.on('audioreset', () => broadcastText(JSON.stringify({ type: 'audioreset' })));
 ap.on('volume', (db) => broadcastText(JSON.stringify({ type: 'volume', db })));
 ap.on('screen', (off) => broadcastText(JSON.stringify({ type: 'screen', off })));   // lets the page explain a frozen picture
 let nFrames = 0;
