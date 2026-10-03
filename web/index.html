@@ -177,7 +177,7 @@ footer{padding:10px 20px 16px;text-align:center;color:var(--sub);font-size:12px}
   <h2 id="adjTitle">音のタイミング</h2>
   <p>音が映像より<b>早い</b>と感じたら、右へ動かしてください（音を遅らせます）。</p>
   <p style="margin:18px 0 4px;font-size:22px;font-weight:700;color:var(--ink)"><span id="adjVal">0.18</span> 秒</p>
-  <input id="adjRange" type="range" min="0" max="600" step="20" value="180" style="width:100%" aria-label="音の遅れ（ミリ秒）">
+  <input id="adjRange" type="range" min="0" max="600" step="10" value="180" style="width:100%" aria-label="音の遅れ（ミリ秒）">
   <div class="dlg-btns"><button class="ghost" id="adjReset" type="button">元に戻す</button><button class="solid-ok" id="adjClose" type="button">閉じる</button></div>
   <small>はじめは 0.18 秒です。映像と音が合うところで、閉じてください。</small>
 </dialog>
@@ -341,7 +341,10 @@ class MxPlayer extends AudioWorkletProcessor {
   constructor() { super(); this.n = 0x20000; this.l = new Float32Array(this.n); this.r = new Float32Array(this.n); this.w = 0; this.rd = 0; this.fill = 0; this.play = false;
     this.pre = 5300; this.max = 17600;
     this.port.onmessage = (e) => { const d = e.data; if (d === 'flush') { this.fill = 0; this.play = false; return; }
-      if (!(d instanceof ArrayBuffer)) { if (d.pre) { this.pre = d.pre; this.max = d.pre + 12000; } return; }
+      if (!(d instanceof ArrayBuffer)) { if (d.pre) { const was = this.pre; this.pre = d.pre; this.max = d.pre + 12000;
+        if (this.play) {   // live change: lengthen the delay with a little silence, or shorten it by skipping a little sound
+          if (this.fill < d.pre) { const add = d.pre - this.fill; for (let i = 0; i < add; i++) { this.l[this.w] = 0; this.r[this.w] = 0; this.w = (this.w + 1) & (this.n - 1); } this.fill += add; }
+          else if (this.fill > d.pre) { const cut = this.fill - d.pre; this.rd = (this.rd + cut) & (this.n - 1); this.fill -= cut; } } } return; }
       const s = new Int16Array(d); for (let i = 0; i + 1 < s.length; i += 2) { this.l[this.w] = s[i] / 32768; this.r[this.w] = s[i + 1] / 32768; this.w = (this.w + 1) & (this.n - 1); this.fill++; }
       if (this.fill > this.max) { const drop = this.fill - this.pre; this.rd = (this.rd + drop) & (this.n - 1); this.fill -= drop; } }; }
   process(_i, outs) { const o = outs[0], L = o[0], R = o[1] || o[0], len = L.length;
