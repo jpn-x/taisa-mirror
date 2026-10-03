@@ -56,6 +56,25 @@ function focusExisting() {
   });
 }
 
+// Is there already a browser window titled "TAISA Mirror ..." (e.g. the tab left open after "終了")?
+// Read-only check. Such a tab reconnects by itself within ~1.5 s when the server comes back.
+function windowExists() {
+  return new Promise((resolve) => {
+    if (process.env.TAISA_NO_BROWSER) return resolve(false);
+    const ps = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+    let out = '', done = false;
+    const finish = (v) => { if (!done) { done = true; resolve(v); } };
+    try {
+      const c = spawn(ps, ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command',
+        "@(Get-Process | Where-Object { $_.MainWindowTitle -like 'TAISA Mirror*' }).Count"], { windowsHide: true });
+      c.stdout.on('data', (d) => { out += d; });
+      c.on('error', () => finish(false));
+      c.on('close', () => finish(parseInt(out.trim(), 10) > 0));
+      setTimeout(() => { try { c.kill(); } catch { /* ignore */ } finish(false); }, 4000);
+    } catch { finish(false); }
+  });
+}
+
 function showMessage(dataDir, title, lines) {
   try {
     fs.mkdirSync(dataDir, { recursive: true });
@@ -69,6 +88,16 @@ function showMessage(dataDir, title, lines) {
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// one short line per click in data/launcher.log (helps to see what a click did; capped at ~64 KB)
+function note(dataDir, msg) {
+  try {
+    fs.mkdirSync(dataDir, { recursive: true });
+    const f = path.join(dataDir, 'launcher.log');
+    if (fs.existsSync(f) && fs.statSync(f).size > 65536) fs.renameSync(f, f + '.1');
+    fs.appendFileSync(f, `${new Date().toISOString()} ${msg}
+`);
+  } catch { /* ignore */ }
+}
 
 async function run({ port, entry }) {
   const dataDir = process.env.TAISA_DATA || path.join(path.dirname(entry), '..', 'data');
@@ -82,6 +111,7 @@ async function run({ port, entry }) {
     await sleep(1200); process.exit(1);
   }
   if (p.state === 'free') {
+    const hadWindow = windowExists();              // checked while the server starts
     const child = spawn(process.execPath, [entry, '--serve'], { detached: true, stdio: 'ignore', windowsHide: true, env: process.env });
     child.unref();
     for (let i = 0; i < 60 && p.state !== 'ours'; i++) { await sleep(150); p = await probe(port); }
@@ -90,10 +120,14 @@ async function run({ port, entry }) {
       showMessage(dataDir, 'TAISA Mirror を起動できませんでした', ['data フォルダの taisa-mirror.log に、原因が書かれています。', 'もう一度アイコンを押しても直らないときは、このログを見せてください。']);
       await sleep(1200); process.exit(1);
     }
-    openUrl(url);
-  } else if (p.ui && p.ui.visible > 0 && await focusExisting()) {
-    // an open TAISA Mirror window was brought forward: nothing else to do
+    // A TAISA Mirror window is still open from before (for example after "終了"): it reconnects by itself,
+    // so wait a moment for it and reuse that window instead of opening another one.
+    if (await hadWindow) { for (let i = 0; i < 18 && !(p.ui && p.ui.visible > 0); i++) { await sleep(150); p = await probe(port); } }
+  }
+  if (p.ui && p.ui.visible > 0 && await focusExisting()) {
+    note(dataDir, 'click: brought the open TAISA Mirror window forward');
   } else {
+    note(dataDir, `click: opened the page (clients=${p.ui ? p.ui.clients : '?'}, visible=${p.ui ? p.ui.visible : '?'})`);
     openUrl(url);
   }
   await sleep(1200); // let explorer.exe start before this process exits

@@ -191,7 +191,11 @@ server.listen(PORT, HOST, () => {
   idleCheck();
 });
 
-async function shutdown() { try { await ap.stop(); } catch { /* ignore */ } process.exit(0); }
+async function shutdown() {
+  try { broadcastText(JSON.stringify({ type: 'bye' })); } catch { /* ignore */ }   // lets open tabs show "終了しました" instead of an error
+  try { await ap.stop(); } catch { /* ignore */ }
+  setTimeout(() => process.exit(0), 150);                                          // give the 'bye' frame time to flush
+}
 process.on('SIGINT', shutdown); process.on('SIGTERM', shutdown);
 process.on('uncaughtException', e => { log('uncaught: ' + (e.stack || e)); });
 

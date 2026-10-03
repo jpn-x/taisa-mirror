@@ -14,7 +14,8 @@
 body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Segoe UI","Hiragino Sans","Yu Gothic UI",sans-serif;min-height:100vh;display:flex;flex-direction:column}
 header{padding:12px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
 .hbar{display:flex;gap:8px;align-items:center}
-.hbar button[hidden]{display:none}
+.hbar[hidden]{display:none}
+.hbar button:disabled{opacity:.38;cursor:not-allowed}
 button.sm{padding:7px 16px;font-size:14px}
 header a{display:flex;align-items:center;gap:10px;color:var(--ink);text-decoration:none;font-weight:700;font-size:18px;letter-spacing:.02em}
 header svg{width:30px;height:30px}
@@ -32,6 +33,7 @@ button{font:inherit;cursor:pointer;border:0;border-radius:999px;padding:12px 22p
 .danger{background:transparent;border:1px solid var(--err);color:var(--err)}
 .pulse{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--brand);margin-right:8px;animation:p 1.2s infinite}
 @keyframes p{0%{opacity:1;transform:scale(1)}70%{opacity:.25;transform:scale(1.6)}100%{opacity:1;transform:scale(1)}}
+.done{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;margin-right:8px;border-radius:50%;background:var(--brand);color:#fff;font-size:16px;vertical-align:2px}
 .note{color:var(--warn);font-weight:600}.err{color:var(--err);font-weight:600}
 .view{display:none}.view.on{display:block}
 #stageView{width:100%;max-width:1200px}
@@ -48,16 +50,30 @@ footer{padding:10px 20px 16px;text-align:center;color:var(--sub);font-size:12px}
 .xbtn:hover{border-color:var(--brand);color:var(--brand-d)}
 .xbtn.fill{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .xbtn.fill:hover{background:var(--brand-d);border-color:var(--brand-d);color:#fff}
+.dlg{border:0;border-radius:26px;padding:30px 28px 24px;width:min(380px,calc(100% - 32px));background:var(--card);color:var(--ink);text-align:center;box-shadow:0 30px 70px rgba(10,40,36,.32),0 0 0 1px var(--line)}
+.dlg[open]{animation:dlgIn .18s ease-out}
+.dlg::backdrop{background:rgba(14,40,37,.38);backdrop-filter:blur(5px);animation:bdIn .18s ease-out}
+@keyframes dlgIn{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes bdIn{from{opacity:0}to{opacity:1}}
+.dlg-ico{width:56px;height:56px;margin:0 auto 14px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(220,38,38,.10);color:#dc2626}
+.dlg-ico svg{width:28px;height:28px}
+.dlg h2{font-size:20px;margin:0 0 6px}
+.dlg p{margin:6px 0 0}
+.dlg-btns{display:flex;gap:10px;justify-content:center;margin-top:22px}
+.dlg-btns button{flex:1;max-width:160px;padding:12px 10px}
+.solid-danger{background:#dc2626;color:#fff;box-shadow:0 6px 16px rgba(220,38,38,.28)}
+.solid-danger:hover{background:#b91c1c}
+@media (prefers-reduced-motion:reduce){.dlg[open],.dlg::backdrop{animation:none}}
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;opacity:0;transition:.25s;pointer-events:none}
 .toast.on{opacity:1}
 </style>
 </head>
 <body>
 <header><a href="/" title="TAISA Mirror トップ"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#14b8a6"/><rect x="20" y="10" width="24" height="44" rx="5" fill="none" stroke="#fff" stroke-width="4"/><circle cx="32" cy="46" r="2.5" fill="#fff"/></svg>TAISA Mirror</a>
-  <div class="hbar">
-    <button class="ghost sm" id="btnFs" hidden>全画面</button>
-    <button class="danger sm" id="btnDis" hidden>切断</button>
-    <button class="danger sm" id="btnQuit" hidden>終了</button>
+  <div class="hbar" id="hbar" hidden>
+    <button class="ghost sm" id="btnFs" title="ミラーリング中に使えます" disabled>全画面</button>
+    <button class="danger sm" id="btnDis" title="ミラーリング中に使えます" disabled>切断</button>
+    <button class="danger sm" id="btnQuit" title="TAISA Mirror を終了します">終了</button>
   </div>
 </header>
 <main>
@@ -67,9 +83,16 @@ footer{padding:10px 20px 16px;text-align:center;color:var(--sub);font-size:12px}
   </section>
 
   <section id="vOff" class="view card">
-    <h1>TAISA Mirror を起動してください</h1>
-    <p>この画面は、パソコン側のTAISA Mirror（裏で動く小さなプログラム）につながっていません。</p>
-    <p><b>「TAISA Mirror」</b>のショートカット（または <code>Start TAISA Mirror.cmd</code>）をダブルクリックしてください。つながると自動でこの画面が切り替わります。</p>
+    <div id="offStart">
+      <h1>TAISA Mirror を起動してください</h1>
+      <p>この画面は、パソコン側のTAISA Mirror（裏で動く小さなプログラム）につながっていません。</p>
+      <p><b>「TAISA Mirror」</b>のショートカット（または <code>Start TAISA Mirror.cmd</code>）をダブルクリックしてください。つながると自動でこの画面が切り替わります。</p>
+    </div>
+    <div id="offBye" hidden>
+      <h1>TAISA Mirror を終了しました</h1>
+      <p>もう一度使うときは、<b>「TAISA Mirror」のアイコン</b>をクリックしてください。</p>
+      <p>この画面は閉じなくても大丈夫です。起動すると、自動でこの画面が切り替わります。</p>
+    </div>
     <p id="retry" style="font-size:13px">接続を待っています…</p>
   </section>
 
@@ -81,8 +104,8 @@ footer{padding:10px 20px 16px;text-align:center;color:var(--sub);font-size:12px}
   </section>
 
   <section id="vWait" class="view card">
-    <h1><span class="pulse"></span>接続待機中…</h1>
-    <p>iPhoneで次の順に選んでください</p>
+    <h1 id="waitTitle"><span class="pulse"></span>接続待機中…</h1>
+    <p id="waitSub">iPhoneで次の順に選んでください</p>
     <div class="steps">コントロールセンターを開く<br><span>→</span> 画面ミラーリング<br><span>→</span> <b id="devName">TAISA Mirror</b></div>
     <p style="font-size:13px">パソコンとiPhoneは同じWi-Fiにつないでおいてください。</p>
     <p id="waitNote"></p>
@@ -104,6 +127,15 @@ footer{padding:10px 20px 16px;text-align:center;color:var(--sub);font-size:12px}
   </div>
   <div>TAISA Mirror v0.1 · ローカル完結（外部送信なし）· 無料・GPL-3.0 · スクリーンショットは ShareX などで</div>
 </footer>
+<dialog id="dlgQuit" class="dlg" aria-labelledby="dlgTitle" aria-describedby="dlgText">
+  <div class="dlg-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v9"/><path d="M6.3 6.6a8 8 0 1 0 11.4 0"/></svg></div>
+  <h2 id="dlgTitle">TAISA Mirror を終了しますか？</h2>
+  <p id="dlgText">ミラーリングも止まります。<br>もう一度使うときは、アイコンをクリックしてください。</p>
+  <div class="dlg-btns">
+    <button class="ghost" id="dlgNo" type="button">キャンセル</button>
+    <button class="solid-danger" id="dlgYes" type="button">終了する</button>
+  </div>
+</dialog>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -112,8 +144,9 @@ const $ = (id) => document.getElementById(id);
 const views = { load: $('vLoad'), off: $('vOff'), idle: $('vIdle'), wait: $('vWait'), conn: $('vConn') };
 function show(name) {
   for (const [k, v] of Object.entries(views)) v.classList.toggle('on', k === name);
-  $('btnFs').hidden = $('btnDis').hidden = (name !== 'conn');          // only while mirroring
-  $('btnQuit').hidden = (name === 'off' || name === 'load');         // needs a live server
+  $('hbar').hidden = (name === 'off' || name === 'load');                  // needs a live server
+  const live = (name === 'conn');
+  $('btnFs').disabled = $('btnDis').disabled = !live;                       // only while mirroring
 }
 (function () { // X share link (text + official site)
   const text = 'iPhoneの画面を、Windowsのブラウザにそのまま映せる「TAISA Mirror」。完全無料・広告なし・アカウント不要・クラウド不要。';
@@ -122,7 +155,7 @@ function show(name) {
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 1800); }
 
 // ---------------------------------------------------------------- websocket
-let ws = null, everOpened = false, fails = 0;
+let ws = null, everOpened = false, fails = 0, bye = false;
 let lastResync = 0;
 function send(cmd) { if (cmd === 'resync') { if (Date.now() - lastResync < 800) return; lastResync = Date.now(); }
   if (ws && ws.readyState === 1) ws.send(JSON.stringify({ cmd })); }
@@ -132,15 +165,30 @@ function connect() {
   ws = new WebSocket(`ws://${location.host}/ws`);
   ws.binaryType = 'arraybuffer';
   ws.onopen = () => { everOpened = true; $('retry').textContent = ''; sendVis(); };
-  ws.onclose = () => { resetDecoder(); fails++; if (everOpened || fails >= 3) { show('off'); $('retry').textContent = '接続を待っています…'; } setTimeout(connect, 1500); };
+  ws.onclose = () => { resetDecoder(); fails++; if (everOpened || fails >= 3) { $('offStart').hidden = bye; $('offBye').hidden = !bye; show('off'); $('retry').textContent = '接続を待っています…'; } setTimeout(connect, 1500); };
   ws.onerror = () => {};
-  ws.onmessage = (ev) => ev.data instanceof ArrayBuffer ? onBinary(new Uint8Array(ev.data)) : onStatus(JSON.parse(ev.data));
+  ws.onmessage = (ev) => {
+    if (ev.data instanceof ArrayBuffer) return onBinary(new Uint8Array(ev.data));
+    const m = JSON.parse(ev.data);
+    if (m.type === 'bye') { bye = true; return; }          // the server is quitting on purpose
+    bye = false; onStatus(m);
+  };
 }
 function onStatus(s) {
   $('devName').textContent = s.name || 'TAISA Mirror';
   const note = s.notice ? `<span class="note">${esc(s.notice)}</span>` : '';
   if (s.state === 'idle') { show('idle'); $('idleMsg').innerHTML = s.error ? `<span class="err">${esc(s.error)}</span>` : note; resetDecoder(); }
-  else if (s.state === 'waiting') { show('wait'); $('waitNote').innerHTML = s.client ? `${esc(s.client.name)} が接続中…` : note; if (!s.client) resetDecoder(); }
+  else if (s.state === 'waiting') {
+    show('wait');
+    if (s.client) { $('waitTitle').innerHTML = '<span class="pulse"></span>接続中…'; $('waitSub').textContent = 'iPhoneからの接続を受け付けています'; $('waitNote').innerHTML = `${esc(s.client.name)} が接続中…`; }
+    else if (s.notice) {   // the mirroring just ended: say so clearly
+      const mine = s.notice === '切断しました';
+      $('waitTitle').innerHTML = `<span class="done">✓</span>${mine ? 'ミラーリングを切断しました' : 'iPhoneとの接続が終了しました'}`;
+      $('waitSub').textContent = 'このまま待機しています。もう一度つなぐときは、iPhoneで次の順に選んでください';
+      $('waitNote').innerHTML = '';
+    } else { $('waitTitle').innerHTML = '<span class="pulse"></span>接続待機中…'; $('waitSub').textContent = 'iPhoneで次の順に選んでください'; $('waitNote').innerHTML = ''; }
+    if (!s.client) resetDecoder();
+  }
   else if (s.state === 'connected') { show('conn'); $('who').textContent = `${s.client && s.client.name || 'iPhone'} 接続中`; }
 }
 const esc = (t) => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -148,7 +196,11 @@ const esc = (t) => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt
 $('btnStart').onclick = () => send('start');
 $('btnCancel').onclick = () => send('cancel');
 $('btnDis').onclick = () => send('disconnect');
-$('btnQuit').onclick = () => { if (confirm('TAISA Mirror を終了します（ミラーリングも止まります）。よろしいですか？')) send('quit'); };
+const dlg = $('dlgQuit');
+$('btnQuit').onclick = () => { dlg.showModal(); $('dlgNo').focus(); };
+$('dlgNo').onclick = () => dlg.close();
+$('dlgYes').onclick = () => { dlg.close(); send('quit'); setTimeout(() => { try { window.close(); } catch {} }, 500); };   // closes the tab if the browser allows it; otherwise the "終了しました" screen stays
+dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });   // click outside = cancel
 $('btnFs').onclick = () => { const st = $('stage'); document.fullscreenElement ? document.exitFullscreen() : st.requestFullscreen(); };
 
 // ---------------------------------------------------------------- video (WebCodecs, hardware H.264 decode in Chrome/Edge)
