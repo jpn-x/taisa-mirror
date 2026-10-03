@@ -46,7 +46,7 @@ function focusExisting() {
     const finish = (v) => { if (!done) { done = true; resolve(v); } };
     try {
       const c = spawn(ps, ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command',
-        "try { $r = (New-Object -ComObject WScript.Shell).AppActivate('MirrorX'); if ($r) { 'OK' } else { 'NO' } } catch { 'NO' }"],
+        "try { $r = (New-Object -ComObject WScript.Shell).AppActivate('MirrorX - '); if ($r) { 'OK' } else { 'NO' } } catch { 'NO' }"],
         { windowsHide: true });
       c.stdout.on('data', (d) => { out += d; });
       c.on('error', () => finish(false));
@@ -66,7 +66,7 @@ function windowExists() {
     const finish = (v) => { if (!done) { done = true; resolve(v); } };
     try {
       const c = spawn(ps, ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command',
-        "@(Get-Process | Where-Object { $_.MainWindowTitle -like 'MirrorX*' }).Count"], { windowsHide: true });
+        "@(Get-Process | Where-Object { $_.MainWindowTitle -like 'MirrorX - *' }).Count"], { windowsHide: true });
       c.stdout.on('data', (d) => { out += d; });
       c.on('error', () => finish(false));
       c.on('close', () => finish(parseInt(out.trim(), 10) > 0));
