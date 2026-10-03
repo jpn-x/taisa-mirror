@@ -28,6 +28,7 @@ main{flex:1;display:flex;align-items:center;justify-content:center;padding:16px}
 h1{font-size:22px;margin:0 0 6px}
 p{color:var(--sub);line-height:1.7;margin:8px 0}
 .steps{background:var(--bg);border-radius:14px;padding:14px 16px;margin:18px 0;color:var(--ink);font-weight:600;line-height:1.9}
+.steps .swipe{font-weight:500;font-size:12.5px;color:var(--sub);line-height:1.5}
 .steps span{color:var(--brand-d)}
 button{font:inherit;cursor:pointer;border:0;border-radius:999px;padding:12px 22px;font-weight:700}
 .big{font-size:20px;padding:18px 40px;background:var(--brand);color:#fff;box-shadow:0 6px 18px rgba(20,184,166,.35);transition:.15s}
@@ -128,7 +129,7 @@ footer{padding:10px 20px 16px;text-align:center;color:var(--sub);font-size:12px}
   <section id="vWait" class="view card">
     <h1 id="waitTitle"><span class="pulse"></span>接続待機中…</h1>
     <p id="waitSub">iPhoneで次の順に選んでください</p>
-    <div class="steps">コントロールセンターを開く<br><span>→</span> 画面ミラーリング<br><span>→</span> <b id="devName">MirrorX</b></div>
+    <div class="steps">コントロールセンターを開く<br><small class="swipe">（画面右上から下にスワイプ）</small><br><span>→</span> 画面ミラーリング<br><span>→</span> <b id="devName">MirrorX</b></div>
     <p style="font-size:13px">※ミラー画面が表示されるまで約5秒ほどかかります。<br>パソコンとiPhoneは同じWi-Fiにつないでおいてください。</p>
     <div id="waitNote" style="margin:8px 0 0"></div>
     <p style="margin-top:22px"><button class="ghost" id="btnCancel">キャンセル</button></p>
