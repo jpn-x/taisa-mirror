@@ -1,6 +1,6 @@
 'use strict';
 // SPDX-License-Identifier: GPL-3.0-or-later
-// TAISA Mirror (https://github.com/jpn-x/taisa-mirror). AirPlay protocol handling follows UxPlay (GPL-3.0); see THIRD_PARTY_NOTICES.md.
+// MirrorX (dev codename TAISA MIRROR, https://github.com/jpn-x/taisa-mirror). AirPlay protocol handling follows UxPlay (GPL-3.0); see THIRD_PARTY_NOTICES.md.
 // Tiny mDNS / DNS-SD responder (RFC 6762/6763) for advertising _raop._tcp and _airplay._tcp.
 // Zero dependencies. Only answers questions about our own names. Nothing leaves the LAN.
 const dgram = require('dgram');
@@ -50,7 +50,7 @@ function ifaces() {
 const sameSubnet = (ifc, addr) => { const a = addr.split('.').map(Number); return ifc.mask.every((m, i) => (a[i] & m) === Number(ifc.net.split('.')[i])); };
 
 class MdnsAdvertiser {
-  /** services: [{ type:'_raop._tcp', instance:'..', port, txt:{} }]; host: 'taisa-mirror-ab12' */
+  /** services: [{ type:'_raop._tcp', instance:'..', port, txt:{} }]; host: 'mirrorx-ab12' */
   constructor({ host, services, log }) {
     this.host = host + '.local'; this.services = services; this.log = log || (() => {});
     this.sock = null; this.timers = [];

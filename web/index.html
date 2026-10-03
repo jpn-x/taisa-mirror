@@ -1,10 +1,10 @@
 <!doctype html>
-<!-- SPDX-License-Identifier: GPL-3.0-or-later  (TAISA Mirror, https://github.com/jpn-x/taisa-mirror) -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later  (MirrorX, dev codename TAISA MIRROR, https://github.com/jpn-x/taisa-mirror) -->
 <html lang="ja">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TAISA Mirror</title>
+<title>MirrorX</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2314b8a6'/%3E%3Crect x='20' y='10' width='24' height='44' rx='5' fill='none' stroke='white' stroke-width='4'/%3E%3Ccircle cx='32' cy='46' r='2.5' fill='white'/%3E%3C/svg%3E">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%2314b8a6'/%3E%3Crect x='20' y='10' width='24' height='44' rx='5' fill='none' stroke='white' stroke-width='4'/%3E%3C/svg%3E">
 <style>
@@ -75,30 +75,30 @@ footer{padding:10px 20px 16px;text-align:center;color:var(--sub);font-size:12px}
 <body>
 <header>
   <div class="brand">
-    <a href="/" title="TAISA Mirror トップ"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#14b8a6"/><rect x="20" y="10" width="24" height="44" rx="5" fill="none" stroke="#fff" stroke-width="4"/><circle cx="32" cy="46" r="2.5" fill="#fff"/></svg>TAISA Mirror</a>
+    <a href="/" title="MirrorX トップ"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#14b8a6"/><rect x="20" y="10" width="24" height="44" rx="5" fill="none" stroke="#fff" stroke-width="4"/><circle cx="32" cy="46" r="2.5" fill="#fff"/></svg>MirrorX</a>
     <small class="esc-hint">※全画面表示を終了するには、<kbd>Esc</kbd> を押します。</small>
   </div>
   <div class="hbar" id="hbar" hidden>
     <button class="ghost sm" id="btnFs" title="ミラーリング中に使えます" disabled>全画面</button>
     <button class="danger sm" id="btnDis" title="ミラーリング中に使えます" disabled>切断</button>
-    <button class="danger sm" id="btnQuit" title="TAISA Mirror を終了します">終了</button>
+    <button class="danger sm" id="btnQuit" title="MirrorX を終了します">終了</button>
   </div>
 </header>
 <main>
   <section id="vLoad" class="view card">
     <h1>つなぎ中…</h1>
-    <p>TAISA Mirror に接続しています。</p>
+    <p>MirrorX に接続しています。</p>
   </section>
 
   <section id="vOff" class="view card">
     <div id="offStart">
-      <h1>TAISA Mirror を起動してください</h1>
-      <p>この画面は、パソコン側のTAISA Mirror（裏で動く小さなプログラム）につながっていません。</p>
-      <p><b>「TAISA Mirror」</b>のショートカット（または <code>Start TAISA Mirror.cmd</code>）をダブルクリックしてください。つながると自動でこの画面が切り替わります。</p>
+      <h1>MirrorX を起動してください</h1>
+      <p>この画面は、パソコン側のMirrorX（裏で動く小さなプログラム）につながっていません。</p>
+      <p><b>「MirrorX」</b>のショートカット（または <code>Start MirrorX.cmd</code>）をダブルクリックしてください。つながると自動でこの画面が切り替わります。</p>
     </div>
     <div id="offBye" hidden>
-      <h1>TAISA Mirror を終了しました</h1>
-      <p>もう一度使うときは、<b>「TAISA Mirror」のアイコン</b>をクリックしてください。</p>
+      <h1>MirrorX を終了しました</h1>
+      <p>もう一度使うときは、<b>「MirrorX」のアイコン</b>をクリックしてください。</p>
       <p>この画面は閉じなくても大丈夫です。起動すると、自動でこの画面が切り替わります。</p>
     </div>
     <p id="retry" style="font-size:13px">接続を待っています…</p>
@@ -115,7 +115,7 @@ footer{padding:10px 20px 16px;text-align:center;color:var(--sub);font-size:12px}
   <section id="vWait" class="view card">
     <h1 id="waitTitle"><span class="pulse"></span>接続待機中…</h1>
     <p id="waitSub">iPhoneで次の順に選んでください</p>
-    <div class="steps">コントロールセンターを開く<br><span>→</span> 画面ミラーリング<br><span>→</span> <b id="devName">TAISA Mirror</b></div>
+    <div class="steps">コントロールセンターを開く<br><span>→</span> 画面ミラーリング<br><span>→</span> <b id="devName">MirrorX</b></div>
     <p style="font-size:13px">※ミラー画面が表示されるまで約5秒ほどかかります。<br>パソコンとiPhoneは同じWi-Fiにつないでおいてください。</p>
     <p id="waitNote"></p>
     <p style="margin-top:22px"><button class="ghost" id="btnCancel">キャンセル</button></p>
@@ -134,11 +134,11 @@ footer{padding:10px 20px 16px;text-align:center;color:var(--sub);font-size:12px}
     <a class="xbtn fill" id="xShare" href="https://x.com/intent/tweet" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>Xでシェア</a>
     <a class="xbtn" href="https://x.com/cadillac600" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>@cadillac600</a>
   </div>
-  <div>TAISA Mirror v0.1 · ローカル完結（外部送信なし）· 無料・GPL-3.0 · スクリーンショットは ShareX などで</div>
+  <div>MirrorX v0.2 · ローカル完結（外部送信なし）· 無料・GPL-3.0 · スクリーンショットは ShareX などで</div>
 </footer>
 <dialog id="dlgQuit" class="dlg" aria-labelledby="dlgTitle" aria-describedby="dlgText">
   <div class="dlg-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v9"/><path d="M6.3 6.6a8 8 0 1 0 11.4 0"/></svg></div>
-  <h2 id="dlgTitle">TAISA Mirror を終了しますか？</h2>
+  <h2 id="dlgTitle">MirrorX を終了しますか？</h2>
   <p id="dlgText">ミラーリングも止まります。<br>もう一度使うときは、アイコンをクリックしてください。</p>
   <div class="dlg-btns">
     <button class="ghost" id="dlgNo" type="button">キャンセル</button>
@@ -158,8 +158,8 @@ function show(name) {
   $('btnFs').disabled = $('btnDis').disabled = !live;                       // only while mirroring
 }
 (function () { // X share link (text + official site)
-  const text = 'iPhoneの画面を、Windowsのブラウザにそのまま映せる「TAISA Mirror」。完全無料・広告なし・アカウント不要・クラウド不要。';
-  $('xShare').href = 'https://x.com/intent/tweet?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent('https://taisa-mirror.jp-x.workers.dev/');
+  const text = 'iPhoneの画面を、Windowsのブラウザにそのまま映せる「MirrorX」。完全無料・広告なし・アカウント不要・クラウド不要。';
+  $('xShare').href = 'https://x.com/intent/tweet?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent('https://mirrorx.jp-x.workers.dev/');
 })();
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 1800); }
 
@@ -184,7 +184,7 @@ function connect() {
   };
 }
 function onStatus(s) {
-  $('devName').textContent = s.name || 'TAISA Mirror';
+  $('devName').textContent = s.name || 'MirrorX';
   const note = s.notice ? `<span class="note">${esc(s.notice)}</span>` : '';
   if (s.state === 'idle') { show('idle'); $('idleMsg').innerHTML = s.error ? `<span class="err">${esc(s.error)}</span>` : note; resetDecoder(); }
   else if (s.state === 'waiting') {

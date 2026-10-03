@@ -1,6 +1,6 @@
 'use strict';
 // SPDX-License-Identifier: GPL-3.0-or-later
-// TAISA Mirror (https://github.com/jpn-x/taisa-mirror). AirPlay protocol handling follows UxPlay (GPL-3.0); see THIRD_PARTY_NOTICES.md.
+// MirrorX (dev codename TAISA MIRROR, https://github.com/jpn-x/taisa-mirror). AirPlay protocol handling follows UxPlay (GPL-3.0); see THIRD_PARTY_NOTICES.md.
 // Tiny control client for tests: node scripts/ctl.js start|cancel|disconnect|status
 const net = require('net');
 const cmd = process.argv[2] || 'status';

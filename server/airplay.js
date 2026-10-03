@@ -1,6 +1,6 @@
 'use strict';
 // SPDX-License-Identifier: GPL-3.0-or-later
-// TAISA Mirror (https://github.com/jpn-x/taisa-mirror). AirPlay protocol handling follows UxPlay (GPL-3.0); see THIRD_PARTY_NOTICES.md.
+// MirrorX (dev codename TAISA MIRROR, https://github.com/jpn-x/taisa-mirror). AirPlay protocol handling follows UxPlay (GPL-3.0); see THIRD_PARTY_NOTICES.md.
 // AirPlay (legacy / "AirPlay 1" screen mirroring) receiver. Zero dependencies.
 // Protocol knowledge follows the open-source UxPlay project (GPL-3.0).
 // Video only in v0.1: the H.264 stream is decrypted here and handed to the browser (WebCodecs).
@@ -41,7 +41,7 @@ function loadIdentity(dataDir) {
 }
 
 class AirPlayReceiver extends EventEmitter {
-  constructor({ name = 'TAISA Mirror', dataDir, log = () => {} }) {
+  constructor({ name = 'MirrorX', dataDir, log = () => {} }) {
     super();
     this.name = name; this.log = log;
     this.id = loadIdentity(dataDir);
@@ -71,7 +71,7 @@ class AirPlayReceiver extends EventEmitter {
     const { raop, airplay } = this.txt();
     const idc = this.id.deviceId.replace(/:/g, '');
     this.mdns = new MdnsAdvertiser({
-      host: 'taisa-mirror-' + idc.slice(-4).toLowerCase(), log: this.log,
+      host: 'mirrorx-' + idc.slice(-4).toLowerCase(), log: this.log,
       services: [
         { type: '_raop._tcp', instance: `${idc}@${this.name}`, port: PORTS.rtsp, txt: raop },
         { type: '_airplay._tcp', instance: this.name, port: PORTS.rtsp, txt: airplay },

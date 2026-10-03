@@ -1,6 +1,6 @@
 # Third-party notices
 
-TAISA Mirror is licensed under the **GNU General Public License v3.0 or later** (see `LICENSE`).
+MirrorX is licensed under the **GNU General Public License v3.0 or later** (see `LICENSE`).
 
 ## Included code / binaries
 
@@ -32,5 +32,5 @@ The only non-source artefacts are `runtime/node.exe` (upstream Node.js, MIT) and
 
 Statements about licensing in this repository reflect a general understanding of open-source licences, not legal advice.
 
-"AirPlay" and "Apple" are trademarks of Apple Inc. TAISA Mirror is an independent open-source project and is not
+"AirPlay" and "Apple" are trademarks of Apple Inc. MirrorX is an independent open-source project and is not
 affiliated with or endorsed by Apple.

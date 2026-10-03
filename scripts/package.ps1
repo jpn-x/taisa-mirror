@@ -1,4 +1,4 @@
-# Builds the release ZIP: release\taisa-mirror-vX.Y.Z-win-x64.zip (+ SHA256SUMS.txt, BUILD-INFO.json).
+# Builds the release ZIP: release\mirrorx-vX.Y.Z-win-x64.zip (+ SHA256SUMS.txt, BUILD-INFO.json).
 # Bundles the official, Authenticode-signed node.exe (verified against nodejs.org SHASUMS256.txt) so end users
 # need to install nothing. No other binaries are included: everything else is plain JavaScript + one WebAssembly file.
 param([string]$NodeVersion = 'v24.19.0')
@@ -7,7 +7,7 @@ $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 $pkg = Get-Content package.json -Raw | ConvertFrom-Json
 $ver = $pkg.version
-$name = "taisa-mirror-v$ver-win-x64"
+$name = "mirrorx-v$ver-win-x64"
 $work = Join-Path $root '.tmp\package'
 $stage = Join-Path $work $name
 Remove-Item $work -Recurse -Force -ErrorAction SilentlyContinue
@@ -35,7 +35,7 @@ New-Item -ItemType Directory "$stage\engine", "$stage\scripts" | Out-Null
 Copy-Item engine\playfair.wasm, engine\playfair.wasm.sha256, engine\pf_wrapper.c "$stage\engine"
 Copy-Item engine\playfair "$stage\engine\playfair" -Recurse
 Copy-Item scripts\create-shortcut.ps1, scripts\build-wasm.sh, scripts\fake-iphone.js, scripts\mdns-probe.js, scripts\firewall.ps1 "$stage\scripts"
-Copy-Item 'Start TAISA Mirror.cmd', 'はじめにお読みください.txt', 'ショートカットを作る.cmd', README.md, LICENSE, THIRD_PARTY_NOTICES.md, package.json $stage
+Copy-Item 'Start MirrorX.cmd', 'はじめにお読みください.txt', 'ショートカットを作る.cmd', README.md, LICENSE, THIRD_PARTY_NOTICES.md, package.json $stage
 
 # 3. provenance
 $commit = (git rev-parse HEAD).Trim()

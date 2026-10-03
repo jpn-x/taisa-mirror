@@ -1,6 +1,6 @@
 'use strict';
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Generates assets/taisa-mirror.ico (teal rounded square + white phone outline). Pure Node, no dependencies.
+// Generates assets/mirrorx.ico (teal rounded square + white phone outline). Pure Node, no dependencies.
 //   node scripts/make-icon.js
 const zlib = require('zlib');
 const fs = require('fs');
@@ -40,8 +40,8 @@ const pngs = sizes.map(s => png(s, render(s)));
 const head = Buffer.alloc(6); head.writeUInt16LE(1, 2); head.writeUInt16LE(sizes.length, 4);
 let off = 6 + 16 * sizes.length; const dir = [];
 sizes.forEach((s, i) => { const e = Buffer.alloc(16); e[0] = s === 256 ? 0 : s; e[1] = s === 256 ? 0 : s; e.writeUInt16LE(1, 4); e.writeUInt16LE(32, 6); e.writeUInt32LE(pngs[i].length, 8); e.writeUInt32LE(off, 12); off += pngs[i].length; dir.push(e); });
-const out = path.join(__dirname, '..', 'assets', 'taisa-mirror.ico');
+const out = path.join(__dirname, '..', 'assets', 'mirrorx.ico');
 fs.mkdirSync(path.dirname(out), { recursive: true });
 fs.writeFileSync(out, Buffer.concat([head, ...dir, ...pngs]));
-fs.writeFileSync(path.join(__dirname, '..', 'assets', 'taisa-mirror-256.png'), pngs[pngs.length - 1]);
+fs.writeFileSync(path.join(__dirname, '..', 'assets', 'mirrorx-256.png'), pngs[pngs.length - 1]);
 console.log('wrote', out, fs.statSync(out).size, 'bytes');

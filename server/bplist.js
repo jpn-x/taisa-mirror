@@ -1,6 +1,6 @@
 'use strict';
 // SPDX-License-Identifier: GPL-3.0-or-later
-// TAISA Mirror (https://github.com/jpn-x/taisa-mirror). AirPlay protocol handling follows UxPlay (GPL-3.0); see THIRD_PARTY_NOTICES.md.
+// MirrorX (dev codename TAISA MIRROR, https://github.com/jpn-x/taisa-mirror). AirPlay protocol handling follows UxPlay (GPL-3.0); see THIRD_PARTY_NOTICES.md.
 // Minimal binary plist (bplist00) reader/writer. Zero dependencies.
 
 class Real { constructor(v) { this.value = v; } }

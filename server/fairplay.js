@@ -1,6 +1,6 @@
 'use strict';
 // SPDX-License-Identifier: GPL-3.0-or-later
-// TAISA Mirror (https://github.com/jpn-x/taisa-mirror). AirPlay protocol handling follows UxPlay (GPL-3.0); see THIRD_PARTY_NOTICES.md.
+// MirrorX (dev codename TAISA MIRROR, https://github.com/jpn-x/taisa-mirror). AirPlay protocol handling follows UxPlay (GPL-3.0); see THIRD_PARTY_NOTICES.md.
 // FairPlay SAP handshake pieces needed by AirPlay mirroring (public information, ported from UxPlay, GPL-3.0).
 // The heavy part (playfair_decrypt) runs as WebAssembly built in CI from engine/playfair/*.c,
 // so no native/unsigned code is ever loaded (Smart App Control friendly).

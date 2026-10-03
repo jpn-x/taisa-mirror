@@ -1,6 +1,6 @@
 'use strict';
 // SPDX-License-Identifier: GPL-3.0-or-later
-// TAISA Mirror (https://github.com/jpn-x/taisa-mirror). AirPlay protocol handling follows UxPlay (GPL-3.0); see THIRD_PARTY_NOTICES.md.
+// MirrorX (dev codename TAISA MIRROR, https://github.com/jpn-x/taisa-mirror). AirPlay protocol handling follows UxPlay (GPL-3.0); see THIRD_PARTY_NOTICES.md.
 // A fake "iPhone" used for end-to-end self tests without a real device.
 // It speaks the sender side of the same protocol: pair-setup / pair-verify / fp-setup / SETUP,
 // then pushes an encrypted H.264 mirror stream (generated with ffmpeg) at the receiver.

@@ -1,7 +1,7 @@
 'use strict';
 // SPDX-License-Identifier: GPL-3.0-or-later
-// TAISA Mirror (https://github.com/jpn-x/taisa-mirror). AirPlay protocol handling follows UxPlay (GPL-3.0); see THIRD_PARTY_NOTICES.md.
-// TAISA Mirror: local control server. Serves the browser UI on 127.0.0.1 only and bridges
+// MirrorX (dev codename TAISA MIRROR, https://github.com/jpn-x/taisa-mirror). AirPlay protocol handling follows UxPlay (GPL-3.0); see THIRD_PARTY_NOTICES.md.
+// MirrorX: local control server. Serves the browser UI on 127.0.0.1 only and bridges
 // the AirPlay receiver to the browser over a WebSocket (H.264 -> WebCodecs).
 const http = require('http');
 const crypto = require('crypto');
@@ -14,18 +14,18 @@ const WEB = path.join(ROOT, 'web');
 const DATA = process.env.TAISA_DATA || path.join(ROOT, 'data');
 const PORT = parseInt(process.env.TAISA_PORT || '7878', 10);
 const HOST = '127.0.0.1'; // never exposed to the LAN
-const NAME = process.env.TAISA_NAME || 'TAISA Mirror';
+const NAME = process.env.TAISA_NAME || 'MirrorX';
 const argv = process.argv;
 const OPEN = argv.includes('--open');
 const BACKGROUND = argv.includes('--serve');            // the detached, windowless server process
 
-// `--open` (what "Start TAISA Mirror.cmd" runs) = launcher mode: make sure ONE windowless server is running,
+// `--open` (what "Start MirrorX.cmd" runs) = launcher mode: make sure ONE windowless server is running,
 // open the browser, and exit. No console window stays open, so nothing can be closed by mistake and the
 // taskbar/desktop shortcut always behaves the same (see server/launcher.js).
 if (OPEN && !BACKGROUND && !argv.includes('--foreground')) { require('./launcher').run({ port: PORT, entry: __filename }); return; }
 
 fs.mkdirSync(DATA, { recursive: true });
-const logStream = fs.createWriteStream(path.join(DATA, 'taisa-mirror.log'), { flags: 'a' });
+const logStream = fs.createWriteStream(path.join(DATA, 'mirrorx.log'), { flags: 'a' });
 const log = (m) => { const l = `${new Date().toISOString()} ${m}`; logStream.write(l + '\n'); if (process.env.TAISA_VERBOSE) console.log(l); };
 
 // ---------------------------------------------------------------- state
@@ -168,7 +168,7 @@ server.on('upgrade', (req, sock) => {
 
 server.on('error', e => {
   if (e.code === 'EADDRINUSE') {
-    console.log(`Port ${PORT} is already in use (TAISA Mirror may already be running): http://localhost:${PORT}`);
+    console.log(`Port ${PORT} is already in use (MirrorX may already be running): http://localhost:${PORT}`);
     log(`listen failed: port ${PORT} in use`);
     process.exit(1);
   }
@@ -186,7 +186,7 @@ function idleCheck() {
 }
 
 server.listen(PORT, HOST, () => {
-  console.log(`TAISA Mirror  http://localhost:${PORT}   (Ctrl+C to quit; the browser page also has a quit button)`);
+  console.log(`MirrorX  http://localhost:${PORT}   (Ctrl+C to quit; the browser page also has a quit button)`);
   log(`ui listening on ${HOST}:${PORT}${BACKGROUND ? ' (background)' : ''}`);
   idleCheck();
 });

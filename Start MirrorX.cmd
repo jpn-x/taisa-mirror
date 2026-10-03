@@ -2,7 +2,7 @@
 chcp 65001 >nul
 setlocal
 cd /d "%~dp0"
-title TAISA Mirror
+title MirrorX
 set "NODE=%~dp0runtime\node.exe"
 if not exist "%NODE%" (
   where node >nul 2>nul
@@ -17,13 +17,13 @@ if not exist "%NODE%" (
   )
   set "NODE=node"
 )
-echo  TAISA Mirror を起動しています...
+echo  MirrorX を起動しています...
 "%NODE%" server\index.js --open
 rem Normal quit or "already running" (exit code 0): close this window by itself.
 rem Only stay open (pause) if something went wrong, so the message can be read.
 if errorlevel 1 (
   echo.
-  echo  TAISA Mirror stopped with an error. Details: data\taisa-mirror.log
+  echo  MirrorX stopped with an error. Details: data\mirrorx.log
   echo.
   pause
 )
