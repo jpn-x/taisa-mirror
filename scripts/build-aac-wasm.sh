@@ -17,6 +17,6 @@ emmake make -j"$(nproc)"
 cd "$SRC/engine"
 emcc -O2 -I/tmp/ffmpeg aac_wrapper.c /tmp/ffmpeg/libavcodec/libavcodec.a /tmp/ffmpeg/libavutil/libavutil.a \
   -s STANDALONE_WASM=1 -s ALLOW_MEMORY_GROWTH=1 -s ERROR_ON_UNDEFINED_SYMBOLS=0 \
-  -s INITIAL_MEMORY=16777216 -s EXPORTED_FUNCTIONS=_mx_in_ptr,_mx_out_ptr,_mx_aac_init,_mx_aac_close,_mx_aac_decode --no-entry -lm -o aac_eld.wasm
+  -s INITIAL_MEMORY=25165824 -s EXPORTED_FUNCTIONS=_mx_in_ptr,_mx_out_ptr,_mx_aac_init,_mx_aac_close,_mx_aac_decode --no-entry -lm -o aac_eld.wasm
 sha256sum aac_eld.wasm | tee aac_eld.wasm.sha256
 ls -l aac_eld.wasm
