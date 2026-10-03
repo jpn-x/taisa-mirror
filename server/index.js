@@ -109,6 +109,8 @@ ap.on('audio', (pcm) => {   // decoded iPhone audio: 16-bit interleaved stereo, 
   const f = wsFrame(2, Buffer.concat([Buffer.from([4]), pcm]));
   for (const c of clients) { if (c.writableLength > 1 << 20) continue; c.write(f); }   // slow browser: drop audio rather than queue it
 });
+let lastAudioMode = null;
+ap.on('audiomode', (mode) => { lastAudioMode = mode; broadcastText(JSON.stringify({ type: 'audiomode', mode })); });
 ap.on('audioreset', () => broadcastText(JSON.stringify({ type: 'audioreset' })));
 ap.on('volume', (db) => broadcastText(JSON.stringify({ type: 'volume', db })));
 ap.on('screen', (off) => broadcastText(JSON.stringify({ type: 'screen', off })));   // lets the page explain a frozen picture
@@ -167,6 +169,11 @@ const server = http.createServer((req, res) => {
     const ui = { clients: clients.size, visible: [...clients].filter(c => c.visible).length };
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); return res.end(JSON.stringify({ ...JSON.parse(status()), ui }));
   }
+  if (url.pathname === '/api/debug' && req.method === 'POST' && originOk(req) && req.headers['x-mirrorx'] === '1') {   // diagnostics from the page (logged on the PC only)
+    let body = ''; req.on('data', (d) => { if (body.length < 1024) body += d; });
+    req.on('end', () => { log('page: ' + body.slice(0, 400)); res.writeHead(204); res.end(); });
+    return;
+  }
   if (url.pathname === '/api/audio-support' && req.method === 'POST' && originOk(req) && req.headers['x-mirrorx'] === '1') {   // M1 diagnostics: which audio codecs can this browser decode?
     let body = ''; req.on('data', (d) => { if (body.length < 2048) body += d; });
     req.on('end', () => { log('browser audio decode support: ' + body.slice(0, 600)); res.writeHead(204); res.end(); });
@@ -201,6 +208,7 @@ server.on('upgrade', (req, sock) => {
   sock.setNoDelay(true);
   clients.add(sock); idleCheck();
   sock.write(wsFrame(1, Buffer.from(status())));
+  if (lastAudioMode) sock.write(wsFrame(1, Buffer.from(JSON.stringify({ type: 'audiomode', mode: lastAudioMode }))));
   resync(sock);
   sock.on('close', () => { clients.delete(sock); idleCheck(); }); sock.on('error', () => {});
   wsParser(sock, msg => {

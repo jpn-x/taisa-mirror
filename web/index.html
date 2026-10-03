@@ -189,11 +189,12 @@ footer{padding:10px 20px 16px;text-align:center;color:var(--sub);font-size:12px}
 </dialog>
 <dialog id="dlgAdj" class="dlg" aria-labelledby="adjTitle">
   <h2 id="adjTitle">音のタイミング</h2>
-  <p>音が映像より<b>早い</b>と感じたら、右へ動かしてください（音を遅らせます）。</p>
+  <p id="adjMode" style="margin:0 0 8px;font-weight:700"></p>
+  <p>音が映像より<b>早い</b>と感じたら右へ、<b>遅い</b>と感じたら左へ動かしてください。</p>
   <p style="margin:18px 0 4px;font-size:22px;font-weight:700;color:var(--ink)"><span id="adjVal">0.20</span> 秒</p>
-  <input id="adjRange" type="range" min="0" max="600" step="10" value="200" style="width:100%" aria-label="音の遅れ（ミリ秒）">
+  <input id="adjRange" type="range" min="-50" max="600" step="10" value="200" style="width:100%" aria-label="音の遅れ（ミリ秒）">
   <div class="dlg-btns"><button class="ghost" id="adjReset" type="button">元に戻す</button><button class="solid-ok" id="adjClose" type="button">閉じる</button></div>
-  <small>はじめは 0.20 秒です。映像と音が合うところで、閉じてください。</small>
+  <small>動画を再生しているとき（YouTubeなど）と、そうでないときで、別々に覚えます。映像と音が合うところで、閉じてください。</small>
 </dialog>
 <div class="toast" id="toast"></div>
 
@@ -236,6 +237,7 @@ function connect() {
     if (ev.data instanceof ArrayBuffer) return onBinary(new Uint8Array(ev.data));
     const m = JSON.parse(ev.data);
     if (m.type === 'bye') { bye = true; return; }          // the server is quitting on purpose
+    if (m.type === 'audiomode') { audioMode = m.mode || 'default'; applyDelay(); if (typeof refreshAdj === 'function') refreshAdj(); return; }
     if (m.type === 'audioreset') { audioStop(); return; }   // a new audio stream starts (next video): drop what is buffered
     if (m.type === 'volume') { setVolumeDb(m.db); return; }   // the iPhone's volume buttons
     if (m.type === 'screen') { screenOffAt = m.off ? performance.now() : 0; return; }   // iPhone screen off/on
@@ -361,16 +363,23 @@ class MxPlayer extends AudioWorkletProcessor {
           else if (this.fill > d.pre) { const cut = this.fill - d.pre; this.rd = (this.rd + cut) & (this.n - 1); this.fill -= cut; } } } return; }
       const s = new Int16Array(d); for (let i = 0; i + 1 < s.length; i += 2) { this.l[this.w] = s[i] / 32768; this.r[this.w] = s[i + 1] / 32768; this.w = (this.w + 1) & (this.n - 1); this.fill++; }
       if (this.fill > this.max) { const drop = this.fill - this.pre; this.rd = (this.rd + drop) & (this.n - 1); this.fill -= drop; } }; }
-  process(_i, outs) { const o = outs[0], L = o[0], R = o[1] || o[0], len = L.length;
+  process(_i, outs) { if ((this.tick = (this.tick || 0) + 1) % 200 === 0) this.port.postMessage({ fill: this.fill });
+    const o = outs[0], L = o[0], R = o[1] || o[0], len = L.length;
     if (!this.play && this.fill >= this.pre) this.play = true;
     if (this.play && this.fill < len) this.play = false;
     if (!this.play) { L.fill(0); if (R !== L) R.fill(0); return true; }
     for (let i = 0; i < len; i++) { L[i] = this.l[this.rd]; if (R !== L) R[i] = this.r[this.rd]; this.rd = (this.rd + 1) & (this.n - 1); } this.fill -= len; return true; } }
 registerProcessor('mx-player', MxPlayer);`;
 let ac = null, node = null, gain = null, audioReady = false, volDb = 0;
-let adelay = 200;   // ms the sound is held back so it lines up with the picture (the picture arrives ~0.2 s after the sound)
-try { const v = parseInt(localStorage.getItem('mx-adelay'), 10); if (v >= 0 && v <= 800) adelay = v; } catch { /* ignore */ }
-function applyDelay() { if (node) node.port.postMessage({ pre: Math.round(44.1 * (120 + adelay)) }); }
+// The phone paces audio differently while a video plays (audioMode "moviePlayback") than otherwise ("default"), so the delay is remembered per mode.
+const DELAY_DEFAULTS = { default: 200, movie: 0 };   // ms
+const delays = { ...DELAY_DEFAULTS };
+let audioMode = 'default';
+const modeKey = () => (audioMode === 'moviePlayback' ? 'movie' : 'default');
+try { for (const k of ['default', 'movie']) { const v = parseInt(localStorage.getItem('mx-adelay-' + k), 10); if (v >= -50 && v <= 800) delays[k] = v; }
+  if (localStorage.getItem('mx-adelay-default') === null) { const o = parseInt(localStorage.getItem('mx-adelay'), 10); if (o >= 0 && o <= 800) delays.default = o; } } catch { /* ignore */ }
+let adelay = delays[modeKey()];
+function applyDelay() { adelay = delays[modeKey()]; if (node) node.port.postMessage({ pre: Math.round(44.1 * (120 + adelay)) }); }
 let muted = false; try { muted = localStorage.getItem('mx-muted') === '1'; } catch { /* ignore */ }
 function paintSnd() { const b = $('btnSnd'); b.textContent = (muted || userVol === 0 ? '🔇 音オフ' : (ac && ac.state === 'suspended' ? '🔊 音を出す（クリック）' : '🔊 音')); }
 let userVol = 100; try { const v = parseInt(localStorage.getItem('mx-vol'), 10); if (v >= 0 && v <= 100) userVol = v; } catch { /* ignore */ }
@@ -383,16 +392,24 @@ async function audioInit() {
     const url = URL.createObjectURL(new Blob([WORKLET], { type: 'text/javascript' }));
     await ac.audioWorklet.addModule(url); URL.revokeObjectURL(url);
     node = new AudioWorkletNode(ac, 'mx-player', { numberOfInputs: 0, outputChannelCount: [2] });
+    node.port.onmessage = (e) => { if (e.data && e.data.fill !== undefined) dbg.fill = e.data.fill; };
     gain = ac.createGain(); node.connect(gain); gain.connect(ac.destination); applyGain();
     applyDelay(); audioReady = true; ac.onstatechange = paintSnd; paintSnd();
   } catch (e) { ac = null; audioReady = false; $('btnSnd').textContent = '🔇 音は使えません'; }
 }
+const dbg = { fill: 0, t0: 0, samples: 0 };   // diagnostics: how far behind real time do audio messages arrive?
+setInterval(() => {
+  if (!views.conn.classList.contains('on') || !dbg.t0) return;
+  const behind = Math.round((performance.now() - dbg.t0) - dbg.samples / 44.1);   // ms: >0 = audio delivered slower than real time
+  fetch('/api/debug', { method: 'POST', headers: { 'X-MirrorX': '1' }, body: JSON.stringify({ mode: audioMode, delay: adelay, workletFillMs: Math.round(dbg.fill / 44.1), deliveredBehindMs: behind, decodeQueue: decoder ? decoder.decodeQueueSize : -1, visible: document.visibilityState }) }).catch(() => {});
+}, 5000);
 function audioPlay(pcm) {
+  if (!dbg.t0) dbg.t0 = performance.now(); dbg.samples += pcm.byteLength / 4;
   if (!ac) audioInit();          // may start suspended until the page gets a click/key (browser rule); then the button asks for it
   if (!audioReady || muted) return;
   node.port.postMessage(pcm.buffer.slice(pcm.byteOffset, pcm.byteOffset + pcm.byteLength));
 }
-function audioStop() { if (node) node.port.postMessage('flush'); }
+function audioStop() { dbg.t0 = 0; dbg.samples = 0; if (node) node.port.postMessage('flush'); }
 const unlockAudio = () => { if (!ac) audioInit(); if (ac && ac.state === 'suspended') ac.resume().then(paintSnd); };
 document.addEventListener('pointerdown', unlockAudio); document.addEventListener('keydown', unlockAudio);
 $('btnSnd').onclick = () => {
@@ -411,11 +428,14 @@ function closeVolPop() { $('volPop').hidden = true; $('btnVol').setAttribute('ar
   pop.addEventListener('click', (e) => e.stopPropagation());
   document.addEventListener('click', closeVolPop);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeVolPop(); }); }
+let refreshAdj = null;
 { const dlgAdj = $('dlgAdj'), rng = $('adjRange'), val = $('adjVal');
-  const setAdj = (v) => { adelay = v; val.textContent = (v / 1000).toFixed(2); rng.value = v; applyDelay(); try { localStorage.setItem('mx-adelay', String(v)); } catch { /* ignore */ } };
-  $('btnAdj').onclick = () => { setAdj(adelay); dlgAdj.showModal(); };
+  const label = () => (audioMode === 'moviePlayback' ? '🎬 いまの音：動画の再生中' : '🎧 いまの音：ふだん');
+  const setAdj = (v) => { const k = modeKey(); delays[k] = v; val.textContent = (v / 1000).toFixed(2); rng.value = v; applyDelay(); try { localStorage.setItem('mx-adelay-' + k, String(v)); } catch { /* ignore */ } };
+  refreshAdj = () => { $('adjMode').textContent = label(); val.textContent = (adelay / 1000).toFixed(2); rng.value = adelay; };
+  $('btnAdj').onclick = () => { refreshAdj(); dlgAdj.showModal(); };
   rng.oninput = () => setAdj(parseInt(rng.value, 10));
-  $('adjReset').onclick = () => setAdj(200);
+  $('adjReset').onclick = () => setAdj(DELAY_DEFAULTS[modeKey()]);
   $('adjClose').onclick = () => dlgAdj.close();
   dlgAdj.addEventListener('click', (e) => { if (e.target === dlgAdj) dlgAdj.close(); }); }
 

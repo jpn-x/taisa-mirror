@@ -291,6 +291,7 @@ class AirPlayReceiver extends EventEmitter {
           res.streams.push({ dataPort: PORTS.mirror, type: 110 });
         } else if (st.type === 96) {
           this.log('audio stream offered: ' + JSON.stringify(st, (k, v) => typeof v === 'bigint' ? v.toString() : Buffer.isBuffer(v) ? `<${v.length}B>` : v));
+          this.emit('audiomode', String(st.audioMode || 'default'));   // 'default' | 'moviePlayback' ...: the phone paces audio differently while a video plays
           this._startAudioSink(conn, st);
           res.streams.push({ dataPort: PORTS.audioData, controlPort: PORTS.audioCtl, type: 96 });
         } else this.log('unknown stream type ' + st.type);
@@ -354,7 +355,7 @@ class AirPlayReceiver extends EventEmitter {
       u.on('error', () => {});
       u.on('message', (m) => {
         try {
-          if (port === PORTS.audioCtl) { st8.ctl++; const t = m.length > 1 ? '0x' + (m[1] & 0x7f).toString(16) : '?'; st8.ctlTypes[t] = (st8.ctlTypes[t] || 0) + 1; return; }
+          if (port === PORTS.audioCtl) { if ((m[1] & 0x7f) === 0x54 && m.length >= 20 && (st8.syncLogged = (st8.syncLogged || 0) + 1) <= 6) this.log(`audio sync pkt: rtpAtNtp=${m.readUInt32BE(16)} ntp=${(m.readUInt32BE(8) + m.readUInt32BE(12) / 4294967296).toFixed(3)}s lastVideoTs=${this.lastVideoTs || 0}us`); st8.ctl++; const t = m.length > 1 ? '0x' + (m[1] & 0x7f).toString(16) : '?'; st8.ctlTypes[t] = (st8.ctlTypes[t] || 0) + 1; return; }
           if (m.length < 12) return;
           const seq = m.readUInt16BE(2), pay = m.subarray(12);
           if (st8.lastSeq >= 0 && ((st8.lastSeq + 1) & 0xffff) !== seq) st8.gaps++;
@@ -467,6 +468,7 @@ class AirPlayReceiver extends EventEmitter {
       }
       if (off !== data.length) return this.log('mirror: trailing bytes after NALs');
       const ts = Number(hdr.readBigUInt64LE(8) / 1000n); // microseconds
+      this.lastVideoTs = ts;
       if (key) this.log(`mirror IDR frame ${data.length}B`);
       this.emit('frame', data, key, ts);
     } else if (type === 1) { // avcC (SPS+PPS), unencrypted
