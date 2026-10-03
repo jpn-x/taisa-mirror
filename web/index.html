@@ -12,7 +12,11 @@
 @media (prefers-color-scheme:dark){:root{--bg:#0c1716;--card:#13201f;--ink:#e6f4f2;--sub:#8fb0ab;--line:#244240;--warn:#fbbf24;--err:#fca5a5}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Segoe UI","Hiragino Sans","Yu Gothic UI",sans-serif;min-height:100vh;display:flex;flex-direction:column}
-header{padding:12px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+header{padding:10px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.brand{display:flex;flex-direction:column;gap:3px}
+.brand a{align-self:flex-start}
+.esc-hint{font-size:11.5px;line-height:1.4;color:var(--sub)}
+.esc-hint kbd{font:inherit;font-weight:700;color:var(--ink);background:var(--card);border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:0 6px}
 .hbar{display:flex;gap:8px;align-items:center}
 .hbar[hidden]{display:none}
 .hbar button:disabled{opacity:.38;cursor:not-allowed}
@@ -69,7 +73,11 @@ footer{padding:10px 20px 16px;text-align:center;color:var(--sub);font-size:12px}
 </style>
 </head>
 <body>
-<header><a href="/" title="TAISA Mirror トップ"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#14b8a6"/><rect x="20" y="10" width="24" height="44" rx="5" fill="none" stroke="#fff" stroke-width="4"/><circle cx="32" cy="46" r="2.5" fill="#fff"/></svg>TAISA Mirror</a>
+<header>
+  <div class="brand">
+    <a href="/" title="TAISA Mirror トップ"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#14b8a6"/><rect x="20" y="10" width="24" height="44" rx="5" fill="none" stroke="#fff" stroke-width="4"/><circle cx="32" cy="46" r="2.5" fill="#fff"/></svg>TAISA Mirror</a>
+    <small class="esc-hint">※全画面表示を終了するには、<kbd>Esc</kbd> を押します。</small>
+  </div>
   <div class="hbar" id="hbar" hidden>
     <button class="ghost sm" id="btnFs" title="ミラーリング中に使えます" disabled>全画面</button>
     <button class="danger sm" id="btnDis" title="ミラーリング中に使えます" disabled>切断</button>
