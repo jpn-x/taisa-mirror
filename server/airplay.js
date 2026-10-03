@@ -346,7 +346,7 @@ class AirPlayReceiver extends EventEmitter {
     if (AUDIO_TEST && this.dataDir) { try { dump = fs.openSync(path.join(this.dataDir, 'audio-m1.bin'), 'w'); } catch { /* ignore */ } }
     s.audioTimer = setInterval(() => {
       if (!st8.pkts && !st8.ctl) return;
-      this.log(`audio rx 5s: pkts=${st8.pkts} bytes=${st8.bytes} redundantCopies=${st8.dups} seqGaps=${st8.gaps} alacLike=${st8.alac} other=${st8.other} ctl=${st8.ctl} ${JSON.stringify(st8.ctlTypes)}`);
+      this.log(`audio rx 5s: pkts=${st8.pkts} bytes=${st8.bytes} redundantCopies=${st8.dups} seqGaps=${st8.gaps} decoded=${s.audio ? s.audio.frames : '-'} lostFrames=${s.audio ? s.audio.lost : '-'} waiting=${s.audio ? s.audio.pending.size : '-'} alacLike=${st8.alac} other=${st8.other} ctl=${st8.ctl} ${JSON.stringify(st8.ctlTypes)}`);
       st8.dups = st8.pkts = st8.bytes = st8.gaps = st8.alac = st8.other = st8.ctl = 0; st8.ctlTypes = {};
     }, 5000);
     for (const port of [PORTS.audioData, PORTS.audioCtl]) {
