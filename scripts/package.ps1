@@ -32,7 +32,7 @@ Write-Host "node.exe signed by: $($sig.SignerCertificate.Subject)"
 # 2. project files
 foreach ($d in 'server', 'web', 'docs', 'assets') { Copy-Item $d "$stage\$d" -Recurse }
 New-Item -ItemType Directory "$stage\engine", "$stage\scripts" | Out-Null
-Copy-Item engine\playfair.wasm, engine\playfair.wasm.sha256, engine\pf_wrapper.c "$stage\engine"
+Copy-Item engine\playfair.wasm, engine\playfair.wasm.sha256, engine\pf_wrapper.c, engineac_eld.wasm, engineac_eld.wasm.sha256, engineac_eld.ffmpeg-commit, engineac_wrapper.c "$stage\engine"
 Copy-Item engine\playfair "$stage\engine\playfair" -Recurse
 Copy-Item scripts\create-shortcut.ps1, scripts\build-wasm.sh, scripts\fake-iphone.js, scripts\mdns-probe.js, scripts\firewall.ps1 "$stage\scripts"
 Copy-Item 'Start MirrorX.cmd', 'はじめにお読みください.txt', 'ショートカットを作る.cmd', README.md, LICENSE, THIRD_PARTY_NOTICES.md, package.json $stage

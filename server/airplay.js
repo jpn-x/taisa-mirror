@@ -44,6 +44,21 @@ function loadIdentity(dataDir) {
   return { deviceId, priv: privateKey };
 }
 
+// ---------------------------------------------------------------- AAC-ELD audio decoder (FFmpeg's AAC decoder built to WebAssembly in CI, engine/aac_eld.wasm)
+let aacModule;
+function makeAacDecoder() {
+  try {
+    if (aacModule === undefined) aacModule = new WebAssembly.Module(fs.readFileSync(path.join(__dirname, '..', 'engine', 'aac_eld.wasm')));
+    const wasi = new Proxy({}, { get: (_t, n) => n === 'proc_exit' ? (c) => { throw new Error('wasm exit ' + c); } : () => 0 });
+    const x = new WebAssembly.Instance(aacModule, { wasi_snapshot_preview1: wasi, env: new Proxy({}, { get: () => () => 0 }) }).exports;
+    const mem = () => new Uint8Array(x.memory.buffer), inP = x.mx_in_ptr(), outP = x.mx_out_ptr();
+    const asc = Buffer.from('f8e85000', 'hex');   // AudioSpecificConfig: AAC-ELD, 44.1 kHz, stereo, 480 samples per frame
+    mem().set(asc, inP);
+    if (x.mx_aac_init(asc.length, 44100, 2) !== 0) return null;
+    return { decode(buf) { if (buf.length < 9 || buf.length > 8192) return null; mem().set(buf, inP); const n = x.mx_aac_decode(buf.length); return n > 0 ? Buffer.from(mem().slice(outP, outP + n * 4)) : null; } };
+  } catch { aacModule = null; return null; }
+}
+
 class AirPlayReceiver extends EventEmitter {
   constructor({ name = 'MirrorX', dataDir, log = () => {} }) {
     super();
@@ -177,8 +192,11 @@ class AirPlayReceiver extends EventEmitter {
         return ok();
       case 'TEARDOWN': return this._teardown(conn, req);
       case 'FLUSH':
-      case 'SET_PARAMETER':
+      case 'SET_PARAMETER': {
+        const m = /^volume:\s*(-?[\d.]+)/m.exec(req.body.toString('latin1'));
+        if (m) { this.log('volume ' + m[1] + ' dB'); this.emit('volume', parseFloat(m[1])); }
         return ok();
+      }
       default:
         this.log(`unhandled ${method} ${url}`);
         return ok();
@@ -319,6 +337,8 @@ class AirPlayReceiver extends EventEmitter {
     const s = this.session; if (!s || s.audioStarted) return; s.audioStarted = true;
     const ct = Number(st && st.ct);
     const seen = new Set();
+    if (ct === 8) { s.audio = { dec: makeAacDecoder(), next: -1, pending: new Map(), lost: 0, frames: 0 }; if (!s.audio.dec) this.log('audio: AAC-ELD decoder (engine/aac_eld.wasm) is not available; audio stays silent'); }
+    s.audioDrain = setInterval(() => this._audioDrain(s), 20);
     const st8 = { dups: 0, pkts: 0, bytes: 0, gaps: 0, lastSeq: -1, alac: 0, other: 0, ctl: 0, ctlTypes: {} };
     let dump = null, dumped = 0;
     if (AUDIO_TEST && this.dataDir) { try { dump = fs.openSync(path.join(this.dataDir, 'audio-m1.bin'), 'w'); } catch { /* ignore */ } }
@@ -348,12 +368,40 @@ class AirPlayReceiver extends EventEmitter {
           const dup = seen.has(seq); seen.add(seq); if (seen.size > 512) seen.delete(seen.values().next().value);
           if (dup) { st8.dups++; return; }
           if (st8.pkts + st8.other <= 3 && st8.pkts <= 3) this.log(`audio pkt seq=${seq} ts=${m.readUInt32BE(4)} payload=${pay.length}B first8=${dec.subarray(0, 8).toString('hex')}`);
+          this._audioIn(s, seq, dec);
           if (dump !== null && dumped < 3000 && dec.length > 8) { const h = Buffer.alloc(6); h.writeUInt32BE(dec.length); h.writeUInt16BE(seq, 4); fs.writeSync(dump, h); fs.writeSync(dump, dec); dumped++; }   // [len u32][seq u16][frame]
         } catch (e) { this.log('audio rx error: ' + e.message); }
       });
       u.bind(port, '0.0.0.0');
     }
     this.log(`audio sink started (ct=${ct}${AUDIO_TEST ? ', test mode ' + AUDIO_TEST : ''})`);
+  }
+
+  // Audio frames arrive 3x (redundancy) and maybe out of order: put them in sequence, skip a hole after 40 ms, decode, emit PCM.
+  _audioIn(s, seq, frame) {
+    const a = s.audio; if (!a || !a.dec) return;
+    if (a.next < 0) a.next = seq;
+    if (((seq - a.next) & 0xffff) > 0x8000 || a.pending.has(seq)) return;   // already played / duplicate
+    a.pending.set(seq, { frame: Buffer.from(frame), at: Date.now() });
+    this._audioDrain(s);
+  }
+
+  _audioDrain(s) {
+    const a = s.audio; if (!a || !a.dec) return;
+    for (let guard = 0; guard < 70000; guard++) {
+      const e = a.pending.get(a.next);
+      if (e) {
+        a.pending.delete(a.next); a.next = (a.next + 1) & 0xffff;
+        let pcm = null; try { pcm = a.dec.decode(e.frame); } catch (err) { this.log('audio decode error: ' + err.message); }
+        if (pcm) { a.frames++; this.emit('audio', pcm); }
+        continue;
+      }
+      if (!a.pending.size) return;
+      let oldest = Infinity, nearest = 0x10000, nearSeq = a.next;
+      for (const [k, v] of a.pending) { if (v.at < oldest) oldest = v.at; const d = (k - a.next) & 0xffff; if (d < nearest) { nearest = d; nearSeq = k; } }
+      if (a.pending.size > 8 || Date.now() - oldest > 40) { a.lost += nearest; a.next = nearSeq; continue; }   // give up on the missing frame(s)
+      return;
+    }
   }
 
   _startMirror(conn, streamId) {
@@ -425,7 +473,7 @@ class AirPlayReceiver extends EventEmitter {
   _endSession(reason) {
     const s = this.session; if (!s) return;
     this.session = null;
-    clearInterval(s.timer); clearInterval(s.audioTimer);
+    clearInterval(s.timer); clearInterval(s.audioTimer); clearInterval(s.audioDrain);
     for (const u of s.udp) { try { u.close(); } catch { /* ignore */ } }
     if (s.mirrorSock) s.mirrorSock.destroy();
     if (s.mirrorServer) s.mirrorServer.close();
@@ -434,4 +482,4 @@ class AirPlayReceiver extends EventEmitter {
   }
 }
 
-module.exports = { AirPlayReceiver, PORTS };
+module.exports = { AirPlayReceiver, PORTS, makeAacDecoder };

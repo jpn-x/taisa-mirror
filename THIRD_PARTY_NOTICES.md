@@ -34,3 +34,7 @@ Statements about licensing in this repository reflect a general understanding of
 
 "AirPlay" and "Apple" are trademarks of Apple Inc. MirrorX is an independent open-source project and is not
 affiliated with or endorsed by Apple.
+
+## FFmpeg (AAC decoder) — LGPL-2.1-or-later
+`engine/aac_eld.wasm` is FFmpeg's native AAC decoder (libavcodec/libavutil, tag n7.1.1, commit in `engine/aac_eld.ffmpeg-commit`) compiled to WebAssembly together with `engine/aac_wrapper.c`. It is used only to decode the AAC-ELD audio that an iPhone sends during screen mirroring.
+Source: https://github.com/FFmpeg/FFmpeg (the exact build recipe is `scripts/build-aac-wasm.sh`, run by `.github/workflows/build-aac-wasm.yml`). FFmpeg is licensed under the LGPL-2.1-or-later (https://www.ffmpeg.org/legal.html); MirrorX as a whole stays GPL-3.0-or-later. The WebAssembly file is a separate, replaceable module: you can rebuild it from the recipe and drop it into `engine/`.
