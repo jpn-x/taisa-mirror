@@ -45,12 +45,15 @@ function loadIdentity(dataDir) {
 }
 
 // ---------------------------------------------------------------- AAC-ELD audio decoder (FFmpeg's AAC decoder built to WebAssembly in CI, engine/aac_eld.wasm)
-let aacModule;
+let aacModule, aacExports;   // ONE wasm instance is reused for every stream (a new instance each time piled up memory)
 function makeAacDecoder() {
   try {
     if (aacModule === undefined) aacModule = new WebAssembly.Module(fs.readFileSync(path.join(__dirname, '..', 'engine', 'aac_eld.wasm')));
-    const wasi = new Proxy({}, { get: (_t, n) => n === 'proc_exit' ? (c) => { throw new Error('wasm exit ' + c); } : () => 0 });
-    const x = new WebAssembly.Instance(aacModule, { wasi_snapshot_preview1: wasi, env: new Proxy({}, { get: () => () => 0 }) }).exports;
+    if (!aacExports) {
+      const wasi = new Proxy({}, { get: (_t, n) => n === 'proc_exit' ? (c) => { throw new Error('wasm exit ' + c); } : () => 0 });
+      aacExports = new WebAssembly.Instance(aacModule, { wasi_snapshot_preview1: wasi, env: new Proxy({}, { get: () => () => 0 }) }).exports;
+    }
+    const x = aacExports;
     const mem = () => new Uint8Array(x.memory.buffer), inP = x.mx_in_ptr(), outP = x.mx_out_ptr();
     const asc = Buffer.from('f8e85000', 'hex');   // AudioSpecificConfig: AAC-ELD, 44.1 kHz, stereo, 480 samples per frame
     mem().set(asc, inP);

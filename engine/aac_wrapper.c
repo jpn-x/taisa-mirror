@@ -4,6 +4,7 @@
  * API (all plain integers, memory is exchanged through two fixed buffers):
  *   mx_in_ptr()/mx_out_ptr()  -> addresses of the input (compressed frame) and output (16-bit interleaved PCM) buffers
  *   mx_aac_init(asc, len, sample_rate, channels) -> 0 on success      (asc is copied from the input buffer)
+ *   mx_aac_close()      -> frees the decoder (call mx_aac_init again for a new stream)
  *   mx_aac_decode(len) -> number of PCM samples per channel written to the output buffer, or a negative error
  */
 #include <stdint.h>
@@ -23,8 +24,17 @@ static AVFrame *frm;
 uint8_t *mx_in_ptr(void)  { return in_buf; }
 int16_t *mx_out_ptr(void) { return out_buf; }
 
+/* Frees the decoder so mx_aac_init can start a fresh stream in the SAME wasm instance (a new instance costs ~32 MB of address space). */
+void mx_aac_close(void) {
+  if (ctx) avcodec_free_context(&ctx);
+  if (pkt) av_packet_free(&pkt);
+  if (frm) av_frame_free(&frm);
+}
+
 int mx_aac_init(int asc_len, int sample_rate, int channels) {
-  const AVCodec *c = avcodec_find_decoder(AV_CODEC_ID_AAC);
+  const AVCodec *c;
+  mx_aac_close();
+  c = avcodec_find_decoder(AV_CODEC_ID_AAC);
   if (!c) return -1;
   ctx = avcodec_alloc_context3(c);
   pkt = av_packet_alloc();
