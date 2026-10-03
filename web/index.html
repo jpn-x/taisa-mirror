@@ -53,6 +53,13 @@ canvas{display:block;max-width:100%;max-height:calc(100vh - 340px);width:auto;he
 .nb{white-space:nowrap}
 .hint b{display:block;margin-bottom:2px;color:#5a4410}
 @media (prefers-color-scheme:dark){.hint{background:#3a3112;border-color:#6b5a1c;color:#f3e3a4}.hint b{color:#ffe9a0}}
+.popwrap{position:relative;display:inline-block}
+.pop{position:absolute;top:calc(100% + 10px);left:50%;transform:translateX(-50%);z-index:40;width:230px;padding:14px 16px 12px;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 12px 32px rgba(14,40,37,.22)}
+.pop[hidden]{display:none}
+.pop-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;font-size:14px}
+.pop-row span{font-size:20px;font-weight:700}
+.pop input[type=range]{width:100%;accent-color:#FF77AA}
+.pop-scale{display:flex;justify-content:space-between;color:var(--sub);font-size:11px;margin-top:2px}
 .pipnote{margin:60px 0;padding:24px;border:2px dashed var(--line);border-radius:16px;text-align:center;color:var(--sub);line-height:1.8}
 .bar{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:center}
 .who{font-weight:700}
@@ -93,10 +100,17 @@ footer{padding:10px 20px 16px;text-align:center;color:var(--sub);font-size:12px}
   </div>
   <div class="hbar" id="hbar" hidden>
     <button class="ghost sm" id="btnFs" title="ミラーリング中に使えます" disabled>全画面</button>
-    <button class="ghost sm" id="btnSnd" title="iPhoneの音を、このパソコンから出します" disabled>🔊 音</button>
-    <button class="ghost sm" id="btnAdj" title="音と映像のタイミングを合わせます" disabled aria-label="音のタイミング調整">⏱</button>
     <button class="ghost sm" id="btnTop" title="小さな窓にして、いつも一番手前に表示します（ミラーリング中に使えます）" disabled hidden>最前面</button>
-    <button class="danger sm" id="btnDis" title="ミラーリング中に使えます" disabled>切断</button>
+    <button class="ghost sm" id="btnSnd" title="iPhoneの音を、このパソコンから出します" disabled>🔊 音</button>
+    <span class="popwrap">
+      <button class="ghost sm" id="btnVol" title="音量を調整します" aria-haspopup="true" aria-expanded="false" disabled>🔉 音量</button>
+      <div class="pop" id="volPop" role="dialog" aria-label="音量" hidden>
+        <div class="pop-row"><b>音量</b><span id="volVal">100%</span></div>
+        <input id="volRange" type="range" min="0" max="100" step="1" value="100" aria-label="音量（0〜100）">
+        <div class="pop-scale"><span>0</span><span>100</span></div>
+      </div>
+    </span>
+    <button class="ghost sm" id="btnAdj" title="音と映像のタイミングを合わせます" disabled aria-label="音のタイミング調整">⏱</button>
     <button class="danger sm" id="btnQuit" title="MirrorX を終了します">終了</button>
   </div>
 </header>
@@ -191,9 +205,10 @@ function show(name) {
   for (const [k, v] of Object.entries(views)) v.classList.toggle('on', k === name);
   $('hbar').hidden = (name === 'off' || name === 'load');                  // needs a live server
   const live = (name === 'conn');
-  $('btnFs').disabled = $('btnDis').disabled = !live;                       // only while mirroring
+  $('btnFs').disabled = !live;                                               // only while mirroring
   $('btnTop').disabled = !live;
-  $('btnSnd').disabled = $('btnAdj').disabled = !live;
+  $('btnSnd').disabled = $('btnAdj').disabled = $('btnVol').disabled = !live;
+  if (!live) closeVolPop();
   if (!live && typeof audioStop === 'function') audioStop();
   if (!live) { lastFrameAt = 0; screenOffAt = 0; }
   if (!live && pipWin) closePip();                                           // connection ended: bring the picture back
@@ -249,7 +264,6 @@ const esc = (t) => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt
 
 $('btnStart').onclick = () => send('start');
 $('btnCancel').onclick = () => send('cancel');
-$('btnDis').onclick = () => send('disconnect');
 const dlg = $('dlgQuit');
 $('btnQuit').onclick = () => { dlg.showModal(); $('dlgNo').focus(); };
 $('dlgNo').onclick = () => dlg.close();
@@ -296,7 +310,7 @@ $('btnTop').onclick = async () => {
       const note = $('pipNote'); if (note) note.remove();
       st.style.cssText = ''; cv.style.cssText = '';
       stageHome.insertBefore(st, $('decMsg'));
-      pipWin = null; $('btnTop').textContent = '最前面'; $('btnFs').disabled = $('btnDis').disabled;
+      pipWin = null; $('btnTop').textContent = '最前面'; $('btnFs').disabled = false;
     });
   } catch (e) { pipWin = null; $('decMsg').textContent = '最前面の窓を開けませんでした: ' + e.message; }
 };
@@ -358,8 +372,9 @@ let adelay = 200;   // ms the sound is held back so it lines up with the picture
 try { const v = parseInt(localStorage.getItem('mx-adelay'), 10); if (v >= 0 && v <= 800) adelay = v; } catch { /* ignore */ }
 function applyDelay() { if (node) node.port.postMessage({ pre: Math.round(44.1 * (120 + adelay)) }); }
 let muted = false; try { muted = localStorage.getItem('mx-muted') === '1'; } catch { /* ignore */ }
-function paintSnd() { const b = $('btnSnd'); b.textContent = (muted ? '🔇 音オフ' : (ac && ac.state === 'suspended' ? '🔊 音を出す（クリック）' : '🔊 音')); }
-function applyGain() { if (gain) gain.gain.value = muted ? 0 : Math.min(1, Math.pow(10, volDb / 20) * 2); }   // iPhone volume (dB); +6 dB so a middle setting is not too quiet
+function paintSnd() { const b = $('btnSnd'); b.textContent = (muted || userVol === 0 ? '🔇 音オフ' : (ac && ac.state === 'suspended' ? '🔊 音を出す（クリック）' : '🔊 音')); }
+let userVol = 100; try { const v = parseInt(localStorage.getItem('mx-vol'), 10); if (v >= 0 && v <= 100) userVol = v; } catch { /* ignore */ }
+function applyGain() { if (gain) gain.gain.value = muted ? 0 : Math.min(1, Math.pow(10, volDb / 20) * 2) * Math.pow(userVol / 100, 2); }   // iPhone volume x this window's volume (squared = feels linear)   // iPhone volume (dB); +6 dB so a middle setting is not too quiet
 function setVolumeDb(db) { volDb = Math.max(-60, Math.min(0, Number(db) || 0)); if (db <= -100) volDb = -100; applyGain(); }
 async function audioInit() {
   if (ac) return;
@@ -382,10 +397,20 @@ const unlockAudio = () => { if (!ac) audioInit(); if (ac && ac.state === 'suspen
 document.addEventListener('pointerdown', unlockAudio); document.addEventListener('keydown', unlockAudio);
 $('btnSnd').onclick = () => {
   if (ac && ac.state === 'suspended' && !muted) { ac.resume().then(paintSnd); return; }
+  if (userVol === 0) { setUserVol(60); muted = false; try { localStorage.setItem('mx-muted', '0'); } catch { /* ignore */ } paintSnd(); return; }
   muted = !muted; try { localStorage.setItem('mx-muted', muted ? '1' : '0'); } catch { /* ignore */ }
   applyGain(); if (muted) audioStop(); paintSnd();
 };
 paintSnd();
+function setUserVol(v) { userVol = Math.max(0, Math.min(100, v | 0)); $('volRange').value = userVol; $('volVal').textContent = userVol + '%'; applyGain(); paintSnd(); try { localStorage.setItem('mx-vol', String(userVol)); } catch { /* ignore */ } }
+function closeVolPop() { $('volPop').hidden = true; $('btnVol').setAttribute('aria-expanded', 'false'); }
+{ const pop = $('volPop'), btn = $('btnVol');
+  $('volRange').value = userVol; $('volVal').textContent = userVol + '%';
+  btn.onclick = (e) => { e.stopPropagation(); const open = pop.hidden; pop.hidden = !open; btn.setAttribute('aria-expanded', String(open)); if (open) $('volRange').focus(); };
+  $('volRange').oninput = () => setUserVol(parseInt($('volRange').value, 10));
+  pop.addEventListener('click', (e) => e.stopPropagation());
+  document.addEventListener('click', closeVolPop);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeVolPop(); }); }
 { const dlgAdj = $('dlgAdj'), rng = $('adjRange'), val = $('adjVal');
   const setAdj = (v) => { adelay = v; val.textContent = (v / 1000).toFixed(2); rng.value = v; applyDelay(); try { localStorage.setItem('mx-adelay', String(v)); } catch { /* ignore */ } };
   $('btnAdj').onclick = () => { setAdj(adelay); dlgAdj.showModal(); };
