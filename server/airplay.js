@@ -375,6 +375,7 @@ class AirPlayReceiver extends EventEmitter {
     } else if (type === 1) { // avcC (SPS+PPS), unencrypted
       const w = Math.round(hdr.readFloatLE(56)), h = Math.round(hdr.readFloatLE(60));
       this.log(`mirror config packet opt=0x${hdr[6].toString(16)} size=${payload.length} ${w}x${h}${hdr[6] === 0x56 || hdr[6] === 0x5e ? ' (video stopping: screen off?)' : ''}`);
+      this.emit('screen', hdr[6] === 0x56 || hdr[6] === 0x5e);   // true = the iPhone screen went off, false = back on
       if (payload.length < 8) return; // empty/odd config (e.g. stream suspended): keep the current decoder
       if (payload.length >= 8 && payload.toString('latin1', 4, 8) === 'hvc1') return this.log('H.265 stream not supported in v0.1');
       this.emit('config', Buffer.from(payload), w, h);

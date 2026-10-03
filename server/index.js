@@ -103,6 +103,7 @@ ap.on('config', (avcc, w, h) => {
   lastConfig = msg; gop = []; gopBytes = 0;
   broadcastBin(lastConfig);
 });
+ap.on('screen', (off) => broadcastText(JSON.stringify({ type: 'screen', off })));   // lets the page explain a frozen picture
 let nFrames = 0;
 setInterval(() => { if (nFrames) log(`frames in last 5s: ${nFrames}`); nFrames = 0; }, 5000).unref();
 ap.on('frame', (data, key, ts) => {

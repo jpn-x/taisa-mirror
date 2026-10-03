@@ -187,7 +187,7 @@ function show(name) {
   const live = (name === 'conn');
   $('btnFs').disabled = $('btnDis').disabled = !live;                       // only while mirroring
   $('btnTop').disabled = !live;
-  if (!live) lastFrameAt = 0;
+  if (!live) { lastFrameAt = 0; screenOffAt = 0; }
   if (!live && pipWin) closePip();                                           // connection ended: bring the picture back
 }
 (function () { // X share link (text + official site)
@@ -213,6 +213,7 @@ function connect() {
     if (ev.data instanceof ArrayBuffer) return onBinary(new Uint8Array(ev.data));
     const m = JSON.parse(ev.data);
     if (m.type === 'bye') { bye = true; return; }          // the server is quitting on purpose
+    if (m.type === 'screen') { screenOffAt = m.off ? performance.now() : 0; return; }   // iPhone screen off/on
     bye = false; onStatus(m);
   };
 }
@@ -250,10 +251,11 @@ $('btnFs').onclick = () => { const st = $('stage'); document.fullscreenElement ?
 // We move the picture (#stage) into it and bring it back when the little window is closed.
 let pipWin = null;
 let lastFrameAt = 0;                                                         // when the last picture arrived (for the "video stopped" hint)
-let stallShown = false, stallTimer = 0;
+let stallShown = false, stallTimer = 0, screenOffAt = 0;
 setInterval(() => {                                                          // picture stopped for 10 s while connected (iPhone sleeps after 30 s at the earliest):
   const live = views.conn.classList.contains('on');                          // fade the hint in for 5 s, once per stall; it never moves the layout (fixed overlay)
-  const stalled = live && lastFrameAt && performance.now() - lastFrameAt > 10000;
+  const now = performance.now();
+  const stalled = live && ((lastFrameAt && now - lastFrameAt > 10000) || (screenOffAt && now - screenOffAt > 10000));
   const el = $('stallHint');
   if (stalled && !stallShown) { stallShown = true; el.classList.add('on'); clearTimeout(stallTimer); stallTimer = setTimeout(() => el.classList.remove('on'), 5000); }
   else if (!stalled) { stallShown = false; clearTimeout(stallTimer); el.classList.remove('on'); }
