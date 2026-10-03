@@ -39,6 +39,7 @@ canvas{display:block;max-width:100%;max-height:calc(100vh - 230px);width:auto;he
 .bar{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:center}
 .who{font-weight:700}
 footer{padding:10px 20px 16px;text-align:center;color:var(--sub);font-size:12px}
+.quitlink{margin-top:8px;background:none;border:0;padding:6px 10px;color:var(--sub);font:inherit;font-size:12px;text-decoration:underline;cursor:pointer}.quitlink:hover{color:var(--err)}
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;opacity:0;transition:.25s;pointer-events:none}
 .toast.on{opacity:1}
 </style>
@@ -81,14 +82,14 @@ footer{padding:10px 20px 16px;text-align:center;color:var(--sub);font-size:12px}
     </div>
   </section>
 </main>
-<footer>TAISA Mirror v0.1 · ローカル完結（外部送信なし）· 無料・GPL-3.0 · スクリーンショットは ShareX などで</footer>
+<footer>TAISA Mirror v0.1 · ローカル完結（外部送信なし）· 無料・GPL-3.0 · スクリーンショットは ShareX などで<br><button class="quitlink" id="btnQuit" hidden>TAISA Mirror を終了する</button></footer>
 <div class="toast" id="toast"></div>
 
 <script>
 'use strict';
 const $ = (id) => document.getElementById(id);
 const views = { off: $('vOff'), idle: $('vIdle'), wait: $('vWait'), conn: $('vConn') };
-function show(name) { for (const [k, v] of Object.entries(views)) v.classList.toggle('on', k === name); }
+function show(name) { for (const [k, v] of Object.entries(views)) v.classList.toggle('on', k === name); $('btnQuit').hidden = (name === 'off'); }
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 1800); }
 
 // ---------------------------------------------------------------- websocket
@@ -116,6 +117,7 @@ const esc = (t) => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt
 $('btnStart').onclick = () => send('start');
 $('btnCancel').onclick = () => send('cancel');
 $('btnDis').onclick = () => send('disconnect');
+$('btnQuit').onclick = () => { if (confirm('TAISA Mirror を終了します（ミラーリングも止まります）。よろしいですか？')) send('quit'); };
 $('btnFs').onclick = () => { const st = $('stage'); document.fullscreenElement ? document.exitFullscreen() : st.requestFullscreen(); };
 
 // ---------------------------------------------------------------- video (WebCodecs, hardware H.264 decode in Chrome/Edge)

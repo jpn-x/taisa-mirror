@@ -7,7 +7,6 @@ const http = require('http');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const { spawn } = require('child_process');
 const { AirPlayReceiver } = require('./airplay');
 
 const ROOT = path.join(__dirname, '..');
@@ -16,7 +15,14 @@ const DATA = process.env.TAISA_DATA || path.join(ROOT, 'data');
 const PORT = parseInt(process.env.TAISA_PORT || '7878', 10);
 const HOST = '127.0.0.1'; // never exposed to the LAN
 const NAME = process.env.TAISA_NAME || 'TAISA Mirror';
-const OPEN = process.argv.includes('--open');
+const argv = process.argv;
+const OPEN = argv.includes('--open');
+const BACKGROUND = argv.includes('--serve');            // the detached, windowless server process
+
+// `--open` (what "Start TAISA Mirror.cmd" runs) = launcher mode: make sure ONE windowless server is running,
+// open the browser, and exit. No console window stays open, so nothing can be closed by mistake and the
+// taskbar/desktop shortcut always behaves the same (see server/launcher.js).
+if (OPEN && !BACKGROUND && !argv.includes('--foreground')) { require('./launcher').run({ port: PORT, entry: __filename }); return; }
 
 fs.mkdirSync(DATA, { recursive: true });
 const logStream = fs.createWriteStream(path.join(DATA, 'taisa-mirror.log'), { flags: 'a' });
@@ -142,43 +148,43 @@ server.on('upgrade', (req, sock) => {
   const accept = crypto.createHash('sha1').update(req.headers['sec-websocket-key'] + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');
   sock.write(`HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ${accept}\r\n\r\n`);
   sock.setNoDelay(true);
-  clients.add(sock);
+  clients.add(sock); idleCheck();
   sock.write(wsFrame(1, Buffer.from(status())));
   resync(sock);
-  sock.on('close', () => clients.delete(sock)); sock.on('error', () => {});
+  sock.on('close', () => { clients.delete(sock); idleCheck(); }); sock.on('error', () => {});
   wsParser(sock, msg => {
     let m; try { m = JSON.parse(msg); } catch { return; }
     if (m.cmd === 'start') start();
     else if (m.cmd === 'cancel') cancel();
     else if (m.cmd === 'disconnect') disconnect();
     else if (m.cmd === 'resync') resync(sock);
+    else if (m.cmd === 'quit') { log('quit requested from the browser'); setTimeout(shutdown, 150); }
   });
 });
 
 server.on('error', e => {
   if (e.code === 'EADDRINUSE') {
-    // Already running: just open the existing UI.
-    console.log(`TAISA Mirror is already running: http://localhost:${PORT}  (opening your browser...)`);
-    if (OPEN) openBrowser();
-    setTimeout(() => process.exit(0), 1500); // give the browser launcher time to start
-    return;
+    console.log(`Port ${PORT} is already in use (TAISA Mirror may already be running): http://localhost:${PORT}`);
+    log(`listen failed: port ${PORT} in use`);
+    process.exit(1);
   }
   console.error(e); process.exit(1);
 });
 
-function openBrowser() {
-  const url = `http://localhost:${PORT}/`;
-  // explorer.exe hands the URL to the default browser through the normal Windows shell path
-  // (no hidden window state is inherited, which can make a cold-started Chrome open invisibly).
-  const c = spawn('explorer.exe', [url], { detached: true, stdio: 'ignore' });
-  c.on('error', () => console.log(`Open this address in Chrome/Edge: ${url}`));
-  c.unref();
+// Background server only: if no browser tab has been connected for a while, quit by itself
+// (so a forgotten, windowless server never lingers and stops advertising on the LAN).
+const IDLE_EXIT_MS = Math.max(1, parseFloat(process.env.TAISA_IDLE_EXIT_MIN || '10')) * 60 * 1000;
+let idleTimer = null;
+function idleCheck() {
+  if (!BACKGROUND) return;
+  clearTimeout(idleTimer); idleTimer = null;
+  if (clients.size === 0) idleTimer = setTimeout(() => { log(`no browser for ${IDLE_EXIT_MS / 60000} min: quitting`); shutdown(); }, IDLE_EXIT_MS);
 }
 
 server.listen(PORT, HOST, () => {
-  console.log(`TAISA Mirror  http://localhost:${PORT}   (this window can stay open; close it to quit)`);
-  log(`ui listening on ${HOST}:${PORT}`);
-  if (OPEN) openBrowser();
+  console.log(`TAISA Mirror  http://localhost:${PORT}   (Ctrl+C to quit; the browser page also has a quit button)`);
+  log(`ui listening on ${HOST}:${PORT}${BACKGROUND ? ' (background)' : ''}`);
+  idleCheck();
 });
 
 async function shutdown() { try { await ap.stop(); } catch { /* ignore */ } process.exit(0); }
