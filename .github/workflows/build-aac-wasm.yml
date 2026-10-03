@@ -1,0 +1,16 @@
+name: build-aac-wasm
+# Builds the AAC-ELD decoder (FFmpeg's AAC decoder -> WebAssembly) for MirrorX audio. Result = downloadable artifact.
+on:
+  workflow_dispatch:
+  push:
+    branches: ['feature-audio-*']
+    paths: ['engine/aac_wrapper.c', 'scripts/build-aac-wasm.sh', '.github/workflows/build-aac-wasm.yml']
+jobs:
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build aac_eld.wasm (official emscripten image)
+        run: docker run --rm -v "$PWD":/src -w /src emscripten/emsdk:latest sh scripts/build-aac-wasm.sh
+      - uses: actions/upload-artifact@v4
+        with: { name: aac-eld-wasm, path: "engine/aac_eld.wasm*\nengine/aac_eld.ffmpeg-commit" }
