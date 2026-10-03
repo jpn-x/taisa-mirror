@@ -193,7 +193,7 @@ function show(name) {
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 1800); }
 
 // ---------------------------------------------------------------- websocket
-let ws = null, everOpened = false, fails = 0, bye = false;
+let ws = null, everOpened = false, fails = 0, bye = false, bootSeen = 0;
 let lastResync = 0;
 function send(cmd) { if (cmd === 'resync') { if (Date.now() - lastResync < 800) return; lastResync = Date.now(); }
   if (ws && ws.readyState === 1) ws.send(JSON.stringify({ cmd })); }
@@ -210,6 +210,7 @@ function connect() {
     const m = JSON.parse(ev.data);
     if (m.type === 'bye') { bye = true; return; }          // the server is quitting on purpose
     if (m.type === 'screen') { screenOffAt = m.off ? performance.now() : 0; return; }   // iPhone screen off/on
+    if (m.boot) { if (bootSeen && bootSeen !== m.boot) { location.reload(); return; } bootSeen = m.boot; }   // server restarted (maybe updated): load the new page
     bye = false; onStatus(m);
   };
 }

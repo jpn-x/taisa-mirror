@@ -37,7 +37,8 @@ let lastConfig = null;     // last avcC packet (so late browsers can start decod
 let gop = [];              // frames since the last IDR, so a browser can resync instantly (the iPhone rarely sends new IDRs)
 let gopBytes = 0;
 
-function status() { return JSON.stringify({ type: 'status', ...state, name: NAME }); }
+const BOOT = Date.now();   // changes at every start: a page left open from an older run reloads itself (see web/index.html)
+function status() { return JSON.stringify({ type: 'status', ...state, name: NAME, boot: BOOT }); }
 function setState(patch) { Object.assign(state, patch); broadcastText(status()); }
 
 // ---------------------------------------------------------------- minimal WebSocket (RFC 6455, server side)
