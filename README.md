@@ -1,6 +1,6 @@
 # MirrorX
 
-開発コードネーム：**TAISA MIRROR**（Development codename: TAISA MIRROR）
+Development codename: TAISA
 
 **Windows で iPhone の画面を、無料・ローカルで、ブラウザに映す。** (AirPlay ミラーリング受信)
 アカウント不要 / 広告なし / クラウド不要 / テレメトリなし / 家の Wi-Fi の中だけで完結。
@@ -61,4 +61,4 @@ pwsh scripts/package.ps1        # 配布 ZIP + SHA256SUMS.txt を release/ に�
 由来の詳細は [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。ライセンスに関する記述は一般的な OSS ライセンスの理解であり、法的助言ではありません。
 
 ## 名前について
-正式名称は **MirrorX**（ミラーエックス）です。**TAISA MIRROR** は、このプロジェクトを作り始めたときの開発コードネームで、GitHub のリポジトリ名（`jpn-x/taisa-mirror`）、環境変数（`TAISA_*`）、過去の Release などに残っています。
+正式名称は **MirrorX**（ミラーエックス）です。Former development name: **TAISA MIRROR**（作り始めたときの開発時の名前）。GitHub のリポジトリ名（`jpn-x/taisa-mirror`）、環境変数（`TAISA_*`）、過去の Release などに残っています。
