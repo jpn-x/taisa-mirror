@@ -176,10 +176,10 @@ footer{padding:10px 20px 16px;text-align:center;color:var(--sub);font-size:12px}
 <dialog id="dlgAdj" class="dlg" aria-labelledby="adjTitle">
   <h2 id="adjTitle">音のタイミング</h2>
   <p>音が映像より<b>早い</b>と感じたら、右へ動かしてください（音を遅らせます）。</p>
-  <p style="margin:18px 0 4px;font-size:22px;font-weight:700;color:var(--ink)"><span id="adjVal">0.20</span> 秒</p>
-  <input id="adjRange" type="range" min="0" max="600" step="20" value="200" style="width:100%" aria-label="音の遅れ（ミリ秒）">
+  <p style="margin:18px 0 4px;font-size:22px;font-weight:700;color:var(--ink)"><span id="adjVal">0.18</span> 秒</p>
+  <input id="adjRange" type="range" min="0" max="600" step="20" value="180" style="width:100%" aria-label="音の遅れ（ミリ秒）">
   <div class="dlg-btns"><button class="ghost" id="adjReset" type="button">元に戻す</button><button class="solid-ok" id="adjClose" type="button">閉じる</button></div>
-  <small>はじめは 0.20 秒です。映像と音が合うところで、閉じてください。</small>
+  <small>はじめは 0.18 秒です。映像と音が合うところで、閉じてください。</small>
 </dialog>
 <div class="toast" id="toast"></div>
 
@@ -351,7 +351,7 @@ class MxPlayer extends AudioWorkletProcessor {
     for (let i = 0; i < len; i++) { L[i] = this.l[this.rd]; if (R !== L) R[i] = this.r[this.rd]; this.rd = (this.rd + 1) & (this.n - 1); } this.fill -= len; return true; } }
 registerProcessor('mx-player', MxPlayer);`;
 let ac = null, node = null, gain = null, audioReady = false, volDb = 0;
-let adelay = 200;   // ms the sound is held back so it lines up with the picture (the picture arrives ~0.2 s after the sound)
+let adelay = 180;   // ms the sound is held back so it lines up with the picture (the picture arrives ~0.2 s after the sound)
 try { const v = parseInt(localStorage.getItem('mx-adelay'), 10); if (v >= 0 && v <= 800) adelay = v; } catch { /* ignore */ }
 function applyDelay() { if (node) node.port.postMessage({ pre: Math.round(44.1 * (120 + adelay)) }); }
 let muted = false; try { muted = localStorage.getItem('mx-muted') === '1'; } catch { /* ignore */ }
@@ -387,7 +387,7 @@ paintSnd();
   const setAdj = (v) => { adelay = v; val.textContent = (v / 1000).toFixed(2); rng.value = v; applyDelay(); try { localStorage.setItem('mx-adelay', String(v)); } catch { /* ignore */ } };
   $('btnAdj').onclick = () => { setAdj(adelay); dlgAdj.showModal(); };
   rng.oninput = () => setAdj(parseInt(rng.value, 10));
-  $('adjReset').onclick = () => setAdj(200);
+  $('adjReset').onclick = () => setAdj(180);
   $('adjClose').onclick = () => dlgAdj.close();
   dlgAdj.addEventListener('click', (e) => { if (e.target === dlgAdj) dlgAdj.close(); }); }
 
