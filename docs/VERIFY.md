@@ -6,7 +6,7 @@ TAISA Mirror は **Smart App Control / Windows Defender を OFF にしなくて�
 ## 1. ZIP が本物か確認する（SHA256）
 Releases ページの `SHA256SUMS.txt` と、ダウンロードした ZIP のハッシュを比べます。PowerShell で:
 ```
-Get-FileHash .\taisa-mirror-v0.1.3-win-x64.zip -Algorithm SHA256
+Get-FileHash .\taisa-mirror-v0.1.4-win-x64.zip -Algorithm SHA256
 ```
 表示された値が `SHA256SUMS.txt` と**完全に同じ**であることを確認してください。違う場合は使わないでください。
 
