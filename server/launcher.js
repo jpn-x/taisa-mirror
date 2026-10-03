@@ -37,6 +37,8 @@ function openUrl(url) {
 }
 
 // Try to activate the existing MirrorX browser window by its title. Resolves true if Windows did it.
+// A harmless key press (F15) first: it lets this background process take the foreground, so the window really comes
+// to the front instead of only blinking in the taskbar when it is hidden behind other windows.
 // (Plain Windows PowerShell + WScript.Shell; if it is unavailable or blocked, the caller just opens the page.)
 function focusExisting() {
   return new Promise((resolve) => {
@@ -46,7 +48,7 @@ function focusExisting() {
     const finish = (v) => { if (!done) { done = true; resolve(v); } };
     try {
       const c = spawn(ps, ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command',
-        "try { $r = (New-Object -ComObject WScript.Shell).AppActivate('MirrorX - '); if ($r) { 'OK' } else { 'NO' } } catch { 'NO' }"],
+        "try { $w = New-Object -ComObject WScript.Shell; $w.SendKeys('{F15}'); Start-Sleep -Milliseconds 120; $r = $w.AppActivate('MirrorX - '); if ($r) { 'OK' } else { 'NO' } } catch { 'NO' }"],
         { windowsHide: true });
       c.stdout.on('data', (d) => { out += d; });
       c.on('error', () => finish(false));
