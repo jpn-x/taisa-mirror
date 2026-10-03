@@ -11,7 +11,8 @@ foreach ($dir in $places) {
   # conhost.exe --headless runs the launcher with NO console window at all: no flashing black window, and no
   # window that the taskbar button could turn into. (If this ever fails, use cmd.exe /c "...\Start TAISA Mirror.cmd".)
   $s.TargetPath = "$env:SystemRoot\System32\conhost.exe"
-  $s.Arguments = "--headless `"$env:SystemRoot\System32\cmd.exe`" /c `"`"$target`"`""
+  # NOTE: exactly one pair of quotes around the .cmd path. A doubled pair ("" "") makes conhost.exe silently run nothing.
+  $s.Arguments = "--headless `"$env:SystemRoot\System32\cmd.exe`" /c `"$target`""
   $s.WorkingDirectory = $root
   $s.IconLocation = (Join-Path (Join-Path $root 'assets') 'taisa-mirror.ico') + ',0'
   $s.Description = 'TAISA Mirror - iPhone screen mirroring in your browser'
